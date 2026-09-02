@@ -58,8 +58,7 @@ const firebaseConfig={
   projectId:"shuklareports",
   storageBucket:"shuklareports.firebasestorage.app",
   messagingSenderId:"133308067679",
-  appId:"1:133308067679:web:a921e81c720178a0bdd0ea",
-  measurementId:"G-0VF9CRV1R4"
+  appId:"1:133308067679:web:a921e81c720178a0bdd0ea"
 };
 
 let db=null,roomRef=null,unsubscribe=null,room=null,myColor=null,playerId=localStorage.getItem("chessPlayerId");
