@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+Apple
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -130,9 +130,6 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 </div>
 
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import {getFirestore,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
-
 const firebaseConfig={
   apiKey:"AIzaSyCtRpxAiAdl0RIpLbx3JuuD5aO_gGYJnNY",
   authDomain:"shuklareports.firebaseapp.com",
@@ -141,8 +138,31 @@ const firebaseConfig={
   messagingSenderId:"133308067679",
   appId:"1:133308067679:web:a921e81c720178a0bdd0ea"
 };
-let db=null,playerId=localStorage.getItem("chessPlayerId");
+let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction;
+let playerId=localStorage.getItem("chessPlayerId");
 if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
+
+let firebaseLoadPromise=null;
+function loadFirebase(){
+ if(firebaseLoadPromise)return firebaseLoadPromise;
+ firebaseLoadPromise=(async()=>{
+  try{
+   document.getElementById("net").textContent="Firebase: connecting…";
+   const appMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js");
+   const fsMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js");
+   const app=appMod.initializeApp(firebaseConfig);
+   db=fsMod.getFirestore(app);
+   doc=fsMod.doc;getDoc=fsMod.getDoc;setDoc=fsMod.setDoc;updateDoc=fsMod.updateDoc;onSnapshot=fsMod.onSnapshot;runTransaction=fsMod.runTransaction;
+   document.getElementById("net").textContent="Firebase: connected";
+   return true;
+  }catch(e){
+   console.error(e);
+   document.getElementById("net").textContent="Firebase: unavailable (Online/Tournament disabled)";
+   return false;
+  }
+ })();
+ return firebaseLoadPromise;
+}
 
 /* ============ CORE CHESS ENGINE (shared by all modes) ============ */
 const PIECES={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
@@ -400,6 +420,7 @@ async function sendOnlineMove(m){
 function code(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
 function configReady(){return firebaseConfig.apiKey!=="YOUR_API_KEY"}
 document.getElementById("createRoom").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=code();onlineRoomRef=doc(db,"chessRooms",id);
   const init={board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:"Player 1",blackId:null,blackName:null,status:"waiting",winner:null,updatedAt:Date.now()};
@@ -407,6 +428,7 @@ document.getElementById("createRoom").onclick=async()=>{
  }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write in the Firebase console.")}
 };
 document.getElementById("joinRoom").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
   onlineRoomRef=doc(db,"chessRooms",id);let s=await getDoc(onlineRoomRef);if(!s.exists()){alert("Room not found.");return}
@@ -430,7 +452,7 @@ function listenOnline(id){
 }
 document.getElementById("flip-online").onclick=()=>{O.flipped=!O.flipped;renderBoard(onlineUI,O)};
 document.getElementById("copyRoom").onclick=async()=>{let v=document.getElementById("roomCode").value;if(v)await navigator.clipboard.writeText(v)};
-document.getElementById("resignOnline").onclick=async()=>{if(onlineRoom?.status==="playing"&&onlineMyColor){if(confirm("Resign this game?"))await updateDoc(onlineRoomRef,{status:"finished",winner:opp(onlineMyColor),updatedAt:Date.now()})}};
+document.getElementById("resignOnline").onclick=async()=>{if(!db)return;if(onlineRoom?.status==="playing"&&onlineMyColor){if(confirm("Resign this game?"))await updateDoc(onlineRoomRef,{status:"finished",winner:opp(onlineMyColor),updatedAt:Date.now()})}};
 document.getElementById("hint-online").onclick=()=>{
  if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor)return;
  let m=bestMove(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep,2);
@@ -453,6 +475,7 @@ let currentTournament=null,currentTournamentId=null,tournUnsub=null;
 document.getElementById("createTourn").onclick=async()=>{
  let names=[1,2,3,4,5,6].map(i=>document.getElementById("t"+i).value.trim());
  if(names.some(n=>!n)){alert("Enter all 6 player names.");return}
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=tid();const ref=doc(db,"tournaments",id);
   const data={name:"6-Player Tournament",teams:names,bracket:initialBracket(),champion:null,createdAt:Date.now()};
@@ -460,9 +483,10 @@ document.getElementById("createTourn").onclick=async()=>{
   openTournament(id);
  }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
 };
-document.getElementById("loadTourn").onclick=()=>{
+document.getElementById("loadTourn").onclick=async()=>{
  let id=document.getElementById("tid").value.trim().toUpperCase();
  if(!id){alert("Enter a Tournament ID.");return}
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  openTournament(id);
 };
 function openTournament(id){
@@ -628,11 +652,9 @@ document.getElementById("navOnline").onclick=()=>showScreen("Online");
 document.getElementById("navTourn").onclick=()=>showScreen("Tourn");
 
 /* ============ INIT ============ */
-try{
- const app=initializeApp(firebaseConfig);db=getFirestore(app);
- document.getElementById("net").textContent="Firebase: connected";
-}catch(e){document.getElementById("net").textContent="Firebase: error — "+e.message}
 newLocalGame();
+document.getElementById("net").textContent="Firebase: not connected yet";
+loadFirebase(); // background load; Quick Play never waits on this
 </script>
 </body>
 </html>
