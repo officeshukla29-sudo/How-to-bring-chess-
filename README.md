@@ -1,4 +1,4 @@
-Apple
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -131,12 +131,12 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 
 <script type="module">
 const firebaseConfig={
-  apiKey:"AIzaSyCtRpxAiAdl0RIpLbx3JuuD5aO_gGYJnNY",
-  authDomain:"shuklareports.firebaseapp.com",
-  projectId:"shuklareports",
-  storageBucket:"shuklareports.firebasestorage.app",
-  messagingSenderId:"133308067679",
-  appId:"1:133308067679:web:a921e81c720178a0bdd0ea"
+  apiKey:"AIzaSyBPwEOdI8WwPKZVCJhvyANp5MPQKmAG79w",
+  authDomain:"chess-dab2c.firebaseapp.com",
+  projectId:"chess-dab2c",
+  storageBucket:"chess-dab2c.firebasestorage.app",
+  messagingSenderId:"639996000069",
+  appId:"1:639996000069:web:716d98a89d0fbb3e10702c"
 };
 let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction;
 let playerId=localStorage.getItem("chessPlayerId");
