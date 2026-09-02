@@ -171,6 +171,10 @@ const PST_P=[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5
 const PST_N=[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50];
 
 function initialBoard(){return [["r","n","b","q","k","b","n","r"],["p","p","p","p","p","p","p","p"],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],["P","P","P","P","P","P","P","P"],["R","N","B","Q","K","B","N","R"]]}
+/* Firestore does not support nested arrays, so the 8x8 board (array of arrays) must be
+   flattened to a single 1D array of 64 cells before writing, and rebuilt into 2D on read. */
+function flattenBoard(b){return b.flat()}
+function unflattenBoard(flat){let b=[];for(let r=0;r<8;r++)b.push(flat.slice(r*8,r*8+8));return b}
 function pcolor(p){return p&&p===p.toUpperCase()?"w":"b"}
 function opp(c){return c==="w"?"b":"w"}
 function ib(r,c){return r>=0&&r<8&&c>=0&&c<8}
@@ -408,12 +412,12 @@ async function sendOnlineMove(m){
   await runTransaction(db,async tx=>{
    const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room does not exist");
    const d=snap.data();if(d.turn!==onlineMyColor)throw Error("Not your turn");
-   const b=d.board.map(a=>a.slice()),cast={...d.castling},ep=d.ep;
+   const b=unflattenBoard(d.board),cast={...d.castling},ep=d.ep;
    const lm=legalMoves(b,onlineMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
    const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
    let hist=[...(d.history||[]),note],next=opp(onlineMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
    if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?onlineMyColor:"draw"}
-   tx.update(onlineRoomRef,{board:ap.nb,castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
+   tx.update(onlineRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
   });
  }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
 }
@@ -423,7 +427,7 @@ document.getElementById("createRoom").onclick=async()=>{
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=code();onlineRoomRef=doc(db,"chessRooms",id);
-  const init={board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:"Player 1",blackId:null,blackName:null,status:"waiting",winner:null,updatedAt:Date.now()};
+  const init={board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:"Player 1",blackId:null,blackName:null,status:"waiting",winner:null,updatedAt:Date.now()};
   await setDoc(onlineRoomRef,init);document.getElementById("roomCode").value=id;onlineMyColor="w";listenOnline(id)
  }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write in the Firebase console.")}
 };
@@ -441,7 +445,7 @@ function listenOnline(id){
  if(onlineUnsub)onlineUnsub();document.getElementById("roomCode").value=id;
  onlineUnsub=onSnapshot(onlineRoomRef,s=>{
   if(!s.exists()){say(onlineUI.statusEl,"Room closed","");return}
-  onlineRoom=s.data();O.board=onlineRoom.board;O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];
+  onlineRoom=s.data();O.board=unflattenBoard(onlineRoom.board);O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];
   document.querySelector("#online-white b").textContent=(onlineRoom.whiteName||"Waiting")+(onlineMyColor==="w"?" (You)":"");
   document.querySelector("#online-black b").textContent=(onlineRoom.blackName||"Waiting")+(onlineMyColor==="b"?" (You)":"");
   if(onlineRoom.winner){say(onlineUI.statusEl,onlineRoom.winner==="draw"?"Draw":onlineRoom.winner==="w"?"White wins":"Black wins","Game over")}
@@ -556,7 +560,7 @@ async function openMatch(matchKey){
   const rref=doc(db,"chessRooms",roomId);
   const rsnap=await getDoc(rref);
   if(!rsnap.exists()){
-   await setDoc(rref,{board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],
+   await setDoc(rref,{board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],
     whiteId:null,whiteName:teamName(m.aSeed),blackId:null,blackName:teamName(m.bSeed),
     status:"waiting",winner:null,tournamentId:currentTournamentId,matchKey,whiteSeed:m.aSeed,blackSeed:m.bSeed,updatedAt:Date.now()});
   }
@@ -574,7 +578,7 @@ function listenTournMatch(){
  if(tournRoomUnsub)tournRoomUnsub();
  tournRoomUnsub=onSnapshot(tournRoomRef,async s=>{
   if(!s.exists())return;
-  tournRoom=s.data();T.board=tournRoom.board;T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];
+  tournRoom=s.data();T.board=unflattenBoard(tournRoom.board);T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];
   document.querySelector("#tourn-white b").textContent=(tournRoom.whiteName||"Waiting")+(tournMyColor==="w"?" (You)":"");
   document.querySelector("#tourn-black b").textContent=(tournRoom.blackName||"Waiting")+(tournMyColor==="b"?" (You)":"");
   if(tournRoom.winner){
@@ -619,12 +623,12 @@ async function sendTournMove(m){
   await runTransaction(db,async tx=>{
    const snap=await tx.get(tournRoomRef);if(!snap.exists())throw Error("Room does not exist");
    const d=snap.data();if(d.turn!==tournMyColor)throw Error("Not your turn");
-   const b=d.board.map(a=>a.slice()),cast={...d.castling},ep=d.ep;
+   const b=unflattenBoard(d.board),cast={...d.castling},ep=d.ep;
    const lm=legalMoves(b,tournMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
    const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
    let hist=[...(d.history||[]),note],next=opp(tournMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
    if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?tournMyColor:"draw"}
-   tx.update(tournRoomRef,{board:ap.nb,castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
+   tx.update(tournRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
   });
  }catch(e){console.error(e);alert(e.message)}finally{tournBusy=false}
 }
