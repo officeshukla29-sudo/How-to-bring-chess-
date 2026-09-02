@@ -3,71 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Chess — Play vs Friend or Computer</title>
+<title>Chess — Local, Online &amp; Tournament</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0d1321;color:#eef2f7;font-family:Inter,system-ui,Arial,sans-serif}
-.app{max-width:1180px;width:96%;margin:20px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
-h1{margin:0;font-size:30px}.muted{color:#94a3b8;font-size:13px}.grid{display:grid;grid-template-columns:minmax(320px,760px) 320px;gap:18px}
+.app{max-width:1180px;width:96%;margin:16px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
+.nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.nav button{background:#182235;border:1px solid #2c3a50;color:#94a3b8;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:650}
+.nav button.active{background:#22c55e;color:#05220e;border-color:#22c55e}
+.screen{display:none}.screen.active{display:block}
+.grid{display:grid;grid-template-columns:minmax(320px,760px) 320px;gap:18px}
 .card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}.boardCard{padding:12px}.board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none}
 .sq{position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer}.light{background:#f0d9b5}.dark{background:#b58863}
-.sq.sel{box-shadow:inset 0 0 0 5px #facc15}.sq.last{background-image:linear-gradient(#facc1555,#facc1555)}.sq.check{background-image:linear-gradient(#ef4444aa,#ef4444aa)}
+.sq.sel{box-shadow:inset 0 0 0 5px #facc15}.sq.check{background-image:linear-gradient(#ef4444aa,#ef4444aa)}.sq.hint{box-shadow:inset 0 0 0 4px #38bdf8}
 .sq.move:after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;background:#22c55e88}.sq.capture:after{content:"";position:absolute;inset:7%;border:5px solid #22c55e88;border-radius:50%}
 .piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2}.wp{color:#fff;text-shadow:0 2px 2px #222}.bp{color:#111;text-shadow:0 1px 1px #fff}
 .coord{position:absolute;font-size:10px;font-weight:700;opacity:.65}.rank{top:3px;left:4px}.file{bottom:3px;right:4px}.light .coord{color:#765536}.dark .coord{color:#f7dfb8}
 .panel{padding:17px}.status{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px;margin-bottom:12px}.status b{font-size:18px}.status div{color:#94a3b8;font-size:12px;margin-top:3px}
-select,button{font:inherit;border:0;border-radius:10px;padding:11px 12px}select{background:#0e1726;color:white;border:1px solid #35445b;width:100%}
+select,button,input{font:inherit;border:0;border-radius:10px;padding:11px 12px}select,input{background:#0e1726;color:white;border:1px solid #35445b;width:100%}
 button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hover{background:#475569}.primary{background:#22c55e;color:#05220e}.primary:hover{background:#16a34a}
+.hintbtn{background:#0284c7}.hintbtn:hover{background:#0369a1}
 .modeRow{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.title{font-size:12px;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:14px 0 7px}.moves{height:260px;overflow:auto;background:#0e1726;border-radius:10px;padding:7px}.row{display:grid;grid-template-columns:34px 1fr 1fr;padding:5px 7px;border-bottom:1px solid #223047;font-size:13px}
+.room{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px}.room input{text-transform:uppercase;font-weight:800;letter-spacing:2px}
+.title{font-size:12px;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:14px 0 7px}.moves{height:200px;overflow:auto;background:#0e1726;border-radius:10px;padding:7px}.row{display:grid;grid-template-columns:34px 1fr 1fr;padding:5px 7px;border-bottom:1px solid #223047;font-size:13px}
 .cap{display:flex;gap:2px;flex-wrap:wrap;min-height:22px;font-size:16px}
+.players{display:grid;gap:7px;margin:12px 0}.player{padding:9px 11px;background:#0e1726;border-radius:10px;display:flex;justify-content:space-between}.you{border:1px solid #22c55e55}
 .hidden{display:none!important}
-@media(max-width:900px){.grid{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status,.modeRow,.buttons,.title,.moves{grid-column:span 2}.moves{height:190px}}
+.tform{display:grid;gap:8px;margin-bottom:14px}
+.bracket{display:grid;gap:10px}
+.bmatch{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px}
+.bmatch .rd{font-size:11px;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px}
+.bp2{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #223047}
+.bp2:last-of-type{border-bottom:none}
+.bp2.win{color:#22c55e;font-weight:700}
+.champ{font-size:20px;font-weight:800;color:#facc15;text-align:center;padding:16px;background:#0e1726;border-radius:12px;margin-top:10px}
+.online .card{margin-bottom:0}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status,.modeRow,.buttons,.title,.moves,.room,.players{grid-column:span 2}.moves{height:170px}}
 @media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.piece{font-size:clamp(29px,11vw,46px)}}
 </style>
 </head>
 <body>
 <div class="app">
-<div class="top"><div><h1>♟ Chess</h1><div class="muted">Pass &amp; play, or play vs computer</div></div></div>
-<div class="grid">
-<div class="card boardCard"><div id="board" class="board"></div></div>
-<div class="card panel">
-<div id="status" class="status"><b>White to move</b><div>New game</div></div>
-<div class="modeRow">
-<select id="mode">
-<option value="pvp">Pass &amp; Play (2 players)</option>
-<option value="cpu-b">Vs Computer — I play White</option>
-<option value="cpu-w">Vs Computer — I play Black</option>
-</select>
-<select id="diff">
-<option value="1">Computer: Easy</option>
-<option value="2" selected>Computer: Medium</option>
-<option value="3">Computer: Hard</option>
-</select>
+<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div id="net" class="muted">Firebase: connecting…</div></div>
+<div class="nav">
+<button id="navLocal" class="active">Quick Play</button>
+<button id="navOnline">Online 1v1</button>
+<button id="navTourn">Tournament</button>
 </div>
-<div class="buttons"><button id="newgame" class="primary">New Game</button><button id="flip">Flip Board</button></div>
-<div class="buttons"><button id="undo">Undo Move</button><button id="resign">Resign</button></div>
-<div class="title">Captured</div>
-<div class="cap" id="capWhite"></div>
-<div class="cap" id="capBlack"></div>
-<div class="title">Move History</div><div id="moves" class="moves"></div>
+
+<!-- LOCAL SCREEN -->
+<div id="scrLocal" class="screen active">
+<div class="grid">
+<div class="card boardCard"><div id="board-local" class="board"></div></div>
+<div class="card panel">
+<div id="status-local" class="status"><b>White to move</b><div>New game</div></div>
+<div class="modeRow">
+<select id="mode"><option value="pvp">Pass &amp; Play (2 players)</option><option value="cpu-b">Vs Computer — I play White</option><option value="cpu-w">Vs Computer — I play Black</option></select>
+<select id="diff"><option value="1">Computer: Easy</option><option value="2" selected>Computer: Medium</option><option value="3">Computer: Hard</option></select>
+</div>
+<div class="buttons"><button id="newgame" class="primary">New Game</button><button id="flip-local">Flip Board</button></div>
+<div class="buttons"><button id="hint-local" class="hintbtn">💡 Hint</button><button id="undo">Undo</button></div>
+<div class="title">Captured</div><div class="cap" id="capWhite-local"></div><div class="cap" id="capBlack-local"></div>
+<div class="title">Move History</div><div id="moves-local" class="moves"></div>
 </div>
 </div>
 </div>
 
-<script>
+<!-- ONLINE 1v1 SCREEN -->
+<div id="scrOnline" class="screen">
+<div class="grid">
+<div class="card boardCard"><div id="board-online" class="board"></div></div>
+<div class="card panel">
+<div id="status-online" class="status"><b>Not connected</b><div>Create or join a room.</div></div>
+<div class="room"><input id="roomCode" maxlength="6" placeholder="ROOM CODE"><button id="copyRoom">Copy</button></div>
+<div class="buttons"><button id="createRoom" class="primary">Create Room</button><button id="joinRoom">Join Room</button></div>
+<div class="players"><div class="player" id="online-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="online-black"><span>♚ Black</span><b>Waiting</b></div></div>
+<div class="buttons"><button id="hint-online" class="hintbtn">💡 Hint</button><button id="flip-online">Flip Board</button></div>
+<div class="buttons"><button id="resignOnline">Resign</button></div>
+<div class="title">Move History</div><div id="moves-online" class="moves"></div>
+</div>
+</div>
+</div>
+
+<!-- TOURNAMENT SCREEN -->
+<div id="scrTourn" class="screen">
+<div id="tournHome">
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div class="card panel">
+<div class="title">Create Tournament (6 players)</div>
+<div class="tform">
+<input id="t1" placeholder="Player 1 (seed 1)"><input id="t2" placeholder="Player 2 (seed 2)">
+<input id="t3" placeholder="Player 3 (seed 3)"><input id="t4" placeholder="Player 4 (seed 4)">
+<input id="t5" placeholder="Player 5 (seed 5)"><input id="t6" placeholder="Player 6 (seed 6)">
+</div>
+<button id="createTourn" class="primary">Create Tournament</button>
+<div class="muted" style="margin-top:8px">Seeds 1 &amp; 2 get a bye straight to semifinals. Seeds 3-6 play quarterfinals.</div>
+</div>
+<div class="card panel">
+<div class="title">Join Tournament</div>
+<div class="room"><input id="tid" placeholder="TOURNAMENT ID"><button id="loadTourn" class="primary">Load</button></div>
+<div class="muted">Ask the organizer for the Tournament ID and enter it here to view the bracket and play your matches.</div>
+</div>
+</div>
+</div>
+<div id="tournView" class="hidden">
+<div class="card panel" style="margin-bottom:16px">
+<div class="top" style="margin-bottom:0"><div><b id="tournName" style="font-size:20px"></b><div class="muted">Tournament ID: <b id="tournIdShow"></b></div></div><button id="backHome">← Back</button></div>
+</div>
+<div id="champBox"></div>
+<div class="bracket" id="bracketBox"></div>
+</div>
+<div id="tournMatch" class="hidden">
+<div class="grid">
+<div class="card boardCard"><div id="board-tourn" class="board"></div></div>
+<div class="card panel">
+<div id="status-tourn" class="status"><b>Not connected</b><div></div></div>
+<div class="players"><div class="player" id="tourn-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="tourn-black"><span>♚ Black</span><b>Waiting</b></div></div>
+<div class="buttons"><button id="hint-tourn" class="hintbtn">💡 Hint</button><button id="flip-tourn">Flip Board</button></div>
+<button id="backBracket" style="margin-bottom:12px">← Back to Bracket</button>
+<div class="title">Move History</div><div id="moves-tourn" class="moves"></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import {getFirestore,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyCtRpxAiAdl0RIpLbx3JuuD5aO_gGYJnNY",
+  authDomain:"shuklareports.firebaseapp.com",
+  projectId:"shuklareports",
+  storageBucket:"shuklareports.firebasestorage.app",
+  messagingSenderId:"133308067679",
+  appId:"1:133308067679:web:a921e81c720178a0bdd0ea"
+};
+let db=null,playerId=localStorage.getItem("chessPlayerId");
+if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
+
+/* ============ CORE CHESS ENGINE (shared by all modes) ============ */
 const PIECES={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
 const VAL={P:100,N:320,B:330,R:500,Q:900,K:20000},FILES="abcdefgh";
 const PST_P=[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0];
 const PST_N=[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50];
 
-let board,turn,castling,ep,history,captured,selected,legal,flipped=false,mode="pvp",busy=false,gameOver=false,moveLog=[];
-
-function initial(){return [["r","n","b","q","k","b","n","r"],["p","p","p","p","p","p","p","p"],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],["P","P","P","P","P","P","P","P"],["R","N","B","Q","K","B","N","R"]]}
-function color(p){return p&&p===p.toUpperCase()?"w":"b"}
+function initialBoard(){return [["r","n","b","q","k","b","n","r"],["p","p","p","p","p","p","p","p"],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],["P","P","P","P","P","P","P","P"],["R","N","B","Q","K","B","N","R"]]}
+function pcolor(p){return p&&p===p.toUpperCase()?"w":"b"}
 function opp(c){return c==="w"?"b":"w"}
 function ib(r,c){return r>=0&&r<8&&c>=0&&c<8}
 function king(b,c){let k=c==="w"?"K":"k";for(let r=0;r<8;r++)for(let x=0;x<8;x++)if(b[r][x]===k)return[r,x];return null}
-
 function attacked(b,r,c,by){
  let p=by==="w"?"P":"p",pr=r+(by==="w"?1:-1);
  for(let dc of[-1,1])if(ib(pr,c+dc)&&b[pr][c+dc]===p)return true;
@@ -77,16 +164,15 @@ function attacked(b,r,c,by){
  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if((dr||dc)&&ib(r+dr,c+dc)&&b[r+dr][c+dc]===p)return true;
  for(let[dr,dc,type]of[[1,0,"R"],[-1,0,"R"],[0,1,"R"],[0,-1,"R"],[1,1,"B"],[1,-1,"B"],[-1,1,"B"],[-1,-1,"B"]]){
   let rr=r+dr,cc=c+dc;
-  while(ib(rr,cc)){let q=b[rr][cc];if(q){if(color(q)===by&&(q.toUpperCase()===type||q.toUpperCase()==="Q"))return true;break}rr+=dr;cc+=dc}
+  while(ib(rr,cc)){let q=b[rr][cc];if(q){if(pcolor(q)===by&&(q.toUpperCase()===type||q.toUpperCase()==="Q"))return true;break}rr+=dr;cc+=dc}
  }
  return false
 }
-function check(b,c){let k=king(b,c);return !k||attacked(b,k[0],k[1],opp(c))}
-
+function inCheck(b,c){let k=king(b,c);return !k||attacked(b,k[0],k[1],opp(c))}
 function pseudo(b,c,cast,epSq){
- const out=[],add=(fr,fc,tr,tc,e={})=>{if(!ib(tr,tc))return;let t=b[tr][tc];if(t&&color(t)===c)return;out.push({fr,fc,tr,tc,piece:b[fr][fc],captured:t,...e})};
+ const out=[],add=(fr,fc,tr,tc,e={})=>{if(!ib(tr,tc))return;let t=b[tr][tc];if(t&&pcolor(t)===c)return;out.push({fr,fc,tr,tc,piece:b[fr][fc],captured:t,...e})};
  for(let r=0;r<8;r++)for(let x=0;x<8;x++){
-  let p=b[r][x];if(!p||color(p)!==c)continue;let u=p.toUpperCase();
+  let p=b[r][x];if(!p||pcolor(p)!==c)continue;let u=p.toUpperCase();
   if(u==="P"){
    let d=c==="w"?-1:1,start=c==="w"?6:1,pr=c==="w"?0:7;
    if(ib(r+d,x)&&!b[r+d][x]){
@@ -96,7 +182,7 @@ function pseudo(b,c,cast,epSq){
    }
    for(let dc of[-1,1]){
     let tr=r+d,tc=x+dc;if(!ib(tr,tc))continue;
-    if(b[tr][tc]&&color(b[tr][tc])!==c){
+    if(b[tr][tc]&&pcolor(b[tr][tc])!==c){
      if(tr===pr)for(let q of["Q","R","B","N"])out.push({fr:r,fc:x,tr,tc,piece:p,captured:b[tr][tc],promotion:c==="w"?q:q.toLowerCase()});
      else add(r,x,tr,tc)
     }
@@ -107,7 +193,7 @@ function pseudo(b,c,cast,epSq){
   }else if(u==="K"){
    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if(dr||dc)add(r,x,r+dr,x+dc);
    let home=c==="w"?7:0;
-   if(r===home&&x===4&&!check(b,c)){
+   if(r===home&&x===4&&!inCheck(b,c)){
     let k=c==="w"?cast.wK:cast.bK,q=c==="w"?cast.wQ:cast.bQ;
     if(k&&!b[home][5]&&!b[home][6]&&b[home][7]===(c==="w"?"R":"r")&&!attacked(b,home,5,opp(c))&&!attacked(b,home,6,opp(c)))out.push({fr:r,fc:x,tr:home,tc:6,piece:p,captured:null,castle:"K"});
     if(q&&!b[home][1]&&!b[home][2]&&!b[home][3]&&b[home][0]===(c==="w"?"R":"r")&&!attacked(b,home,3,opp(c))&&!attacked(b,home,2,opp(c)))out.push({fr:r,fc:x,tr:home,tc:2,piece:p,captured:null,castle:"Q"})
@@ -116,20 +202,19 @@ function pseudo(b,c,cast,epSq){
    let ds=u==="R"?[[1,0],[-1,0],[0,1],[0,-1]]:u==="B"?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
    for(let[dr,dc]of ds){
     let rr=r+dr,cc=x+dc;
-    while(ib(rr,cc)){let t=b[rr][cc];if(!t)add(r,x,rr,cc);else{if(color(t)!==c)add(r,x,rr,cc);break}rr+=dr;cc+=dc}
+    while(ib(rr,cc)){let t=b[rr][cc];if(!t)add(r,x,rr,cc);else{if(pcolor(t)!==c)add(r,x,rr,cc);break}rr+=dr;cc+=dc}
    }
   }
  }
  return out
 }
-
 function applyMove(b,m,cast,epSq){
  let nb=b.map(a=>a.slice()),nc={...cast},nep=null;
  nb[m.tr][m.tc]=m.promotion||m.piece;nb[m.fr][m.fc]=null;
  if(m.ep)nb[m.fr][m.tc]=null;
  if(m.castle==="K"){let home=m.fr;nb[home][5]=nb[home][7];nb[home][7]=null}
  if(m.castle==="Q"){let home=m.fr;nb[home][3]=nb[home][0];nb[home][0]=null}
- if(m.piece.toUpperCase()==="K"){if(color(m.piece)==="w"){nc.wK=false;nc.wQ=false}else{nc.bK=false;nc.bQ=false}}
+ if(m.piece.toUpperCase()==="K"){if(pcolor(m.piece)==="w"){nc.wK=false;nc.wQ=false}else{nc.bK=false;nc.bQ=false}}
  if(m.piece.toUpperCase()==="R"){
   if(m.fr===7&&m.fc===0)nc.wQ=false;if(m.fr===7&&m.fc===7)nc.wK=false;
   if(m.fr===0&&m.fc===0)nc.bQ=false;if(m.fr===0&&m.fc===7)nc.bK=false;
@@ -141,87 +226,24 @@ function applyMove(b,m,cast,epSq){
  if(m.double)nep=[(m.fr+m.tr)/2,m.fc];
  return{nb,nc,nep}
 }
-
 function legalMoves(b,c,cast,epSq){
- return pseudo(b,c,cast,epSq).filter(m=>{
-  let{nb}=applyMove(b,m,cast,epSq);
-  return !check(nb,c)
- })
+ return pseudo(b,c,cast,epSq).filter(m=>{let{nb}=applyMove(b,m,cast,epSq);return !inCheck(nb,c)})
 }
-
-function notation(b,m,cast,epSq,allLegal){
- let u=m.piece.toUpperCase(),from=FILES[m.fc]+(8-m.fr),to=FILES[m.tc]+(8-m.tr);
+function notation(b,m,cast,epSq){
+ let u=m.piece.toUpperCase(),to=FILES[m.tc]+(8-m.tr);
  if(m.castle==="K")return "O-O";
  if(m.castle==="Q")return "O-O-O";
- let s="";
- if(u==="P"){
-  s=m.captured?FILES[m.fc]+"x"+to:to;
- }else{
-  s=u+(m.captured?"x":"")+to;
- }
+ let s=u==="P"?(m.captured?FILES[m.fc]+"x"+to:to):(u+(m.captured?"x":"")+to);
  if(m.promotion)s+="="+m.promotion.toUpperCase();
- let{nb}=applyMove(b,m,cast,epSq),nc2=opp(color(m.piece));
- if(check(nb,nc2)){
-  let hasMoves=legalMoves(nb,nc2,cast,null).length>0;
-  s+=hasMoves?"+":"#"
- }
+ let{nb}=applyMove(b,m,cast,epSq),nc2=opp(pcolor(m.piece));
+ if(inCheck(nb,nc2)){let hasMoves=legalMoves(nb,nc2,cast,null).length>0;s+=hasMoves?"+":"#"}
  return s
 }
-
-function newGame(){
- board=initial();turn="w";castling={wK:true,wQ:true,bK:true,bQ:true};ep=null;history=[];captured={w:[],b:[]};
- selected=null;legal=[];gameOver=false;moveLog=[];
- mode=document.getElementById("mode").value;
- say("White to move","New game");
- render();
- maybeComputerMove();
-}
-
-function humanColor(){
- if(mode==="pvp")return null;
- return mode==="cpu-b"?"w":"b";
-}
-
-function makeMove(m){
- if(gameOver)return;
- let note=notation(board,m,castling,ep);
- let{nb,nc,nep}=applyMove(board,m,castling,ep);
- if(m.captured)captured[color(m.captured)].push(m.captured);
- history.push(note);moveLog.push({board:board.map(a=>a.slice()),castling:{...castling},ep,turn,capturedSnap:{w:captured.w.slice(),b:captured.b.slice()}});
- board=nb;castling=nc;ep=nep;turn=opp(turn);
- selected=null;legal=[];
- let moves=legalMoves(board,turn,castling,ep);
- if(!moves.length){
-  gameOver=true;
-  if(check(board,turn))say(turn==="w"?"Black wins":"White wins","Checkmate");
-  else say("Draw","Stalemate");
- }else if(check(board,turn)){
-  say((turn==="w"?"White":"Black")+" to move","Check!")
- }else{
-  say((turn==="w"?"White":"Black")+" to move","")
- }
- render();
- maybeComputerMove();
-}
-
-function maybeComputerMove(){
- if(gameOver)return;
- let hc=humanColor();
- if(hc===null)return;
- if(turn===hc)return;
- busy=true;
- setTimeout(()=>{
-  let m=computerMove();
-  busy=false;
-  if(m)makeMove(m);
- },350);
-}
-
 function evalBoard(b){
  let s=0;
  for(let r=0;r<8;r++)for(let x=0;x<8;x++){
   let p=b[r][x];if(!p)continue;
-  let u=p.toUpperCase(),c=color(p),sign=c==="w"?1:-1;
+  let u=p.toUpperCase(),c=pcolor(p),sign=c==="w"?1:-1;
   s+=sign*VAL[u];
   let idx=c==="w"?r*8+x:(7-r)*8+x;
   if(u==="P")s+=sign*PST_P[idx];
@@ -229,111 +251,388 @@ function evalBoard(b){
  }
  return s
 }
-
-function computerMove(){
- let diff=parseInt(document.getElementById("diff").value);
- let depth=diff===1?1:diff===2?2:3;
+function minimax(b,c,cast,epSq,depth,alpha,beta){
+ let moves=legalMoves(b,c,cast,epSq);
+ if(depth===0||!moves.length){
+  if(!moves.length){if(inCheck(b,c))return c==="w"?-99999:99999;return 0}
+  return evalBoard(b);
+ }
+ if(c==="w"){
+  let v=-Infinity;
+  for(let m of moves){let{nb,nc,nep}=applyMove(b,m,cast,epSq);v=Math.max(v,minimax(nb,"b",nc,nep,depth-1,alpha,beta));alpha=Math.max(alpha,v);if(beta<=alpha)break}
+  return v
+ }else{
+  let v=Infinity;
+  for(let m of moves){let{nb,nc,nep}=applyMove(b,m,cast,epSq);v=Math.min(v,minimax(nb,"w",nc,nep,depth-1,alpha,beta));beta=Math.min(beta,v);if(beta<=alpha)break}
+  return v
+ }
+}
+function bestMove(board,turn,castling,ep,depth){
  let moves=legalMoves(board,turn,castling,ep);
  if(!moves.length)return null;
- if(diff===1&&Math.random()<0.35){
-  return moves[Math.floor(Math.random()*moves.length)];
- }
  let best=null,bestScore=turn==="w"?-Infinity:Infinity;
  let order=moves.slice().sort((a,b2)=>(b2.captured?VAL[b2.captured.toUpperCase()]:0)-(a.captured?VAL[a.captured.toUpperCase()]:0));
  for(let m of order){
   let{nb,nc,nep}=applyMove(board,m,castling,ep);
-  let score=minimax(nb,opp(turn),nc,nep,depth-1,-Infinity,Infinity,turn==="w");
+  let score=minimax(nb,opp(turn),nc,nep,depth-1,-Infinity,Infinity);
   if(turn==="w"?score>bestScore:score<bestScore){bestScore=score;best=m}
  }
  return best||moves[0]
 }
 
-function minimax(b,c,cast,epSq,depth,alpha,beta,maximizingWasWhite){
- let moves=legalMoves(b,c,cast,epSq);
- if(depth===0||!moves.length){
-  if(!moves.length){
-   if(check(b,c))return c==="w"?-99999:99999;
-   return 0;
-  }
-  return evalBoard(b);
- }
- if(c==="w"){
-  let v=-Infinity;
-  for(let m of moves){
-   let{nb,nc,nep}=applyMove(b,m,cast,epSq);
-   v=Math.max(v,minimax(nb,"b",nc,nep,depth-1,alpha,beta,maximizingWasWhite));
-   alpha=Math.max(alpha,v);if(beta<=alpha)break;
-  }
-  return v
- }else{
-  let v=Infinity;
-  for(let m of moves){
-   let{nb,nc,nep}=applyMove(b,m,cast,epSq);
-   v=Math.min(v,minimax(nb,"w",nc,nep,depth-1,alpha,beta,maximizingWasWhite));
-   beta=Math.min(beta,v);if(beta<=alpha)break;
-  }
-  return v
+/* ============ REUSABLE BOARD RENDERER ============ */
+function makeBoardUI(elId,statusId,movesId,capWId,capBId){
+ return {
+  el:document.getElementById(elId),statusEl:statusId?document.getElementById(statusId):null,
+  movesEl:movesId?document.getElementById(movesId):null,capWEl:capWId?document.getElementById(capWId):null,capBEl:capBId?document.getElementById(capBId):null
  }
 }
-
-function say(a,b){document.getElementById("status").innerHTML="<b>"+a+"</b><div>"+b+"</div>"}
-
-function click(r,c){
- if(gameOver||busy)return;
- let hc=humanColor();
- if(hc!==null&&turn!==hc)return;
- let p=board[r][c],m=legal.find(x=>x.tr===r&&x.tc===c);
- if(selected&&m){makeMove(m);return}
- if(p&&color(p)===turn){selected=[r,c];render()}
- else{selected=null;render()}
-}
-
-function render(){
- const el=document.getElementById("board");el.innerHTML="";if(!board)return;
- const rs=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7],cs=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
- legal=selected?legalMoves(board,turn,castling,ep).filter(m=>m.fr===selected[0]&&m.fc===selected[1]):[];
- let lastM=moveLog.length?null:null;
+function say(statusEl,a,b){if(statusEl)statusEl.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
+function renderBoard(ui,state){
+ const el=ui.el;el.innerHTML="";if(!state.board)return;
+ const rs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7],cs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
  for(let ri=0;ri<8;ri++)for(let ci=0;ci<8;ci++){
   let r=rs[ri],c=cs[ci],s=document.createElement("div");
   s.className="sq "+((r+c)%2?"dark":"light");
-  if(selected&&selected[0]===r&&selected[1]===c)s.classList.add("sel");
-  let lm=legal.find(m=>m.tr===r&&m.tc===c);if(lm)s.classList.add(board[r][c]?"capture":"move");
-  let k=king(board,turn);if(k&&k[0]===r&&k[1]===c&&check(board,turn))s.classList.add("check");
-  if(board[r][c]){let z=document.createElement("span");z.className="piece "+(color(board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[board[r][c]];s.appendChild(z)}
+  if(state.selected&&state.selected[0]===r&&state.selected[1]===c)s.classList.add("sel");
+  let lm=state.legal.find(m=>m.tr===r&&m.tc===c);if(lm)s.classList.add(state.board[r][c]?"capture":"move");
+  let k=king(state.board,state.turn);if(k&&k[0]===r&&k[1]===c&&inCheck(state.board,state.turn))s.classList.add("check");
+  if(state.hint&&((state.hint.fr===r&&state.hint.fc===c)||(state.hint.tr===r&&state.hint.tc===c)))s.classList.add("hint");
+  if(state.board[r][c]){let z=document.createElement("span");z.className="piece "+(pcolor(state.board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[state.board[r][c]];s.appendChild(z)}
   if(ci===0){let z=document.createElement("span");z.className="coord rank";z.textContent=8-r;s.appendChild(z)}
   if(ri===7){let z=document.createElement("span");z.className="coord file";z.textContent=FILES[c];s.appendChild(z)}
-  s.onclick=()=>click(r,c);
+  s.onclick=()=>state.onClick(r,c);
   el.appendChild(s)
  }
- document.getElementById("moves").innerHTML=history.map((x,i)=>i%2===0?`<div class="row"><span>${i/2+1}.</span><span>${x}</span><span>${history[i+1]||""}</span></div>`:"").join("");
- document.getElementById("moves").scrollTop=document.getElementById("moves").scrollHeight;
- document.getElementById("capWhite").innerHTML=captured.b.map(p=>PIECES[p]).join(" ");
- document.getElementById("capBlack").innerHTML=captured.w.map(p=>PIECES[p]).join(" ");
+ if(ui.movesEl){
+  ui.movesEl.innerHTML=(state.history||[]).map((x,i)=>i%2===0?`<div class="row"><span>${i/2+1}.</span><span>${x}</span><span>${state.history[i+1]||""}</span></div>`:"").join("");
+  ui.movesEl.scrollTop=ui.movesEl.scrollHeight;
+ }
+ if(ui.capWEl)ui.capWEl.innerHTML=(state.captured?.b||[]).map(p=>PIECES[p]).join(" ");
+ if(ui.capBEl)ui.capBEl.innerHTML=(state.captured?.w||[]).map(p=>PIECES[p]).join(" ");
 }
 
-document.getElementById("newgame").onclick=newGame;
-document.getElementById("flip").onclick=()=>{flipped=!flipped;render()};
+/* ============ QUICK PLAY (LOCAL) ============ */
+const localUI=makeBoardUI("board-local","status-local","moves-local","capWhite-local","capBlack-local");
+let L={};
+function localHumanColor(){let m=document.getElementById("mode").value;if(m==="pvp")return null;return m==="cpu-b"?"w":"b"}
+function newLocalGame(){
+ L={board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],captured:{w:[],b:[]},selected:null,legal:[],flipped:false,hint:null,gameOver:false,onClick:localClick};
+ say(localUI.statusEl,"White to move","New game");
+ renderBoard(localUI,L);
+ maybeComputerMove();
+}
+function localClick(r,c){
+ if(L.gameOver)return;
+ let hc=localHumanColor();
+ if(hc!==null&&L.turn!==hc)return;
+ L.hint=null;
+ let p=L.board[r][c],m=L.legal.find(x=>x.tr===r&&x.tc===c);
+ if(L.selected&&m){makeLocalMove(m);return}
+ if(p&&pcolor(p)===L.turn){L.selected=[r,c];L.legal=legalMoves(L.board,L.turn,L.castling,L.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(localUI,L)}
+ else{L.selected=null;L.legal=[];renderBoard(localUI,L)}
+}
+function makeLocalMove(m){
+ let note=notation(L.board,m,L.castling,L.ep);
+ let{nb,nc,nep}=applyMove(L.board,m,L.castling,L.ep);
+ if(m.captured)L.captured[pcolor(m.captured)].push(m.captured);
+ L.history.push(note);L.board=nb;L.castling=nc;L.ep=nep;L.turn=opp(L.turn);L.selected=null;L.legal=[];L.hint=null;
+ let moves=legalMoves(L.board,L.turn,L.castling,L.ep);
+ if(!moves.length){L.gameOver=true;if(inCheck(L.board,L.turn))say(localUI.statusEl,L.turn==="w"?"Black wins":"White wins","Checkmate");else say(localUI.statusEl,"Draw","Stalemate")}
+ else if(inCheck(L.board,L.turn))say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","Check!");
+ else say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","");
+ renderBoard(localUI,L);
+ maybeComputerMove();
+}
+function maybeComputerMove(){
+ if(L.gameOver)return;
+ let hc=localHumanColor();
+ if(hc===null||L.turn===hc)return;
+ setTimeout(()=>{
+  let diff=parseInt(document.getElementById("diff").value);
+  let depth=diff===1?1:diff===2?2:3;
+  let moves=legalMoves(L.board,L.turn,L.castling,L.ep);
+  if(!moves.length)return;
+  let m=(diff===1&&Math.random()<0.35)?moves[Math.floor(Math.random()*moves.length)]:bestMove(L.board,L.turn,L.castling,L.ep,depth);
+  if(m)makeLocalMove(m);
+ },300);
+}
+document.getElementById("newgame").onclick=newLocalGame;
+document.getElementById("flip-local").onclick=()=>{L.flipped=!L.flipped;renderBoard(localUI,L)};
+document.getElementById("mode").onchange=newLocalGame;
+document.getElementById("hint-local").onclick=()=>{
+ if(L.gameOver)return;
+ let hc=localHumanColor();if(hc!==null&&L.turn!==hc)return;
+ let m=bestMove(L.board,L.turn,L.castling,L.ep,2);
+ if(m){L.hint=m;renderBoard(localUI,L);say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
 document.getElementById("undo").onclick=()=>{
- if(!moveLog.length||busy)return;
- let last=moveLog.pop();
- board=last.board;castling=last.castling;ep=last.ep;turn=last.turn;captured=last.capturedSnap;
- history.pop();gameOver=false;selected=null;
- if(mode!=="pvp"&&moveLog.length&&turn!==humanColor()){
-  let last2=moveLog.pop();
-  board=last2.board;castling=last2.castling;ep=last2.ep;turn=last2.turn;captured=last2.capturedSnap;
-  history.pop();
- }
- say((turn==="w"?"White":"Black")+" to move","");
- render();
+ alert("Undo isn't available mid-game in this version — start New Game to reset.");
 };
-document.getElementById("resign").onclick=()=>{
- if(gameOver)return;
- gameOver=true;
- say((opp(turn)==="w"?"White":"Black")+" wins","Resignation");
-};
-document.getElementById("mode").onchange=newGame;
 
-newGame();
+/* ============ ONLINE 1v1 ============ */
+const onlineUI=makeBoardUI("board-online","status-online","moves-online",null,null);
+let O={board:null,turn:"w",castling:null,ep:null,history:[],selected:null,legal:[],flipped:false,hint:null,onClick:onlineClick};
+let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false;
+function onlineClick(r,c){
+ if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor||onlineBusy)return;
+ O.hint=null;
+ let p=O.board[r][c],m=O.legal.find(x=>x.tr===r&&x.tc===c);
+ if(O.selected&&m){sendOnlineMove(m);return}
+ if(p&&pcolor(p)===onlineMyColor){O.selected=[r,c];O.legal=legalMoves(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(onlineUI,O)}
+ else{O.selected=null;O.legal=[];renderBoard(onlineUI,O)}
+}
+async function sendOnlineMove(m){
+ if(onlineBusy)return;onlineBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room does not exist");
+   const d=snap.data();if(d.turn!==onlineMyColor)throw Error("Not your turn");
+   const b=d.board.map(a=>a.slice()),cast={...d.castling},ep=d.ep;
+   const lm=legalMoves(b,onlineMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
+   const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
+   let hist=[...(d.history||[]),note],next=opp(onlineMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
+   if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?onlineMyColor:"draw"}
+   tx.update(onlineRoomRef,{board:ap.nb,castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
+  });
+ }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
+}
+function code(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+function configReady(){return firebaseConfig.apiKey!=="YOUR_API_KEY"}
+document.getElementById("createRoom").onclick=async()=>{
+ try{
+  const id=code();onlineRoomRef=doc(db,"chessRooms",id);
+  const init={board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:"Player 1",blackId:null,blackName:null,status:"waiting",winner:null,updatedAt:Date.now()};
+  await setDoc(onlineRoomRef,init);document.getElementById("roomCode").value=id;onlineMyColor="w";listenOnline(id)
+ }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write in the Firebase console.")}
+};
+document.getElementById("joinRoom").onclick=async()=>{
+ try{
+  const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
+  onlineRoomRef=doc(db,"chessRooms",id);let s=await getDoc(onlineRoomRef);if(!s.exists()){alert("Room not found.");return}
+  let d=s.data();if(d.blackId&&d.blackId!==playerId){alert("Room already has two players.");return}
+  if(d.whiteId===playerId)onlineMyColor="w";else{await updateDoc(onlineRoomRef,{blackId:playerId,blackName:"Player 2",status:"playing",updatedAt:Date.now()});onlineMyColor="b"}
+  listenOnline(id)
+ }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Join room failed: "+(e.code||e.message))}
+};
+function listenOnline(id){
+ if(onlineUnsub)onlineUnsub();document.getElementById("roomCode").value=id;
+ onlineUnsub=onSnapshot(onlineRoomRef,s=>{
+  if(!s.exists()){say(onlineUI.statusEl,"Room closed","");return}
+  onlineRoom=s.data();O.board=onlineRoom.board;O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];
+  document.querySelector("#online-white b").textContent=(onlineRoom.whiteName||"Waiting")+(onlineMyColor==="w"?" (You)":"");
+  document.querySelector("#online-black b").textContent=(onlineRoom.blackName||"Waiting")+(onlineMyColor==="b"?" (You)":"");
+  if(onlineRoom.winner){say(onlineUI.statusEl,onlineRoom.winner==="draw"?"Draw":onlineRoom.winner==="w"?"White wins":"Black wins","Game over")}
+  else if(onlineRoom.status==="waiting")say(onlineUI.statusEl,"Waiting for opponent","Send room code: "+id);
+  else say(onlineUI.statusEl,onlineRoom.turn===onlineMyColor?"Your turn":"Opponent's turn",onlineRoom.turn==="w"?"White to move":"Black to move");
+  renderBoard(onlineUI,O);
+ },e=>{say(onlineUI.statusEl,"Firebase error",e.message)});
+}
+document.getElementById("flip-online").onclick=()=>{O.flipped=!O.flipped;renderBoard(onlineUI,O)};
+document.getElementById("copyRoom").onclick=async()=>{let v=document.getElementById("roomCode").value;if(v)await navigator.clipboard.writeText(v)};
+document.getElementById("resignOnline").onclick=async()=>{if(onlineRoom?.status==="playing"&&onlineMyColor){if(confirm("Resign this game?"))await updateDoc(onlineRoomRef,{status:"finished",winner:opp(onlineMyColor),updatedAt:Date.now()})}};
+document.getElementById("hint-online").onclick=()=>{
+ if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor)return;
+ let m=bestMove(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep,2);
+ if(m){O.hint=m;renderBoard(onlineUI,O);say(onlineUI.statusEl,"Your turn","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
+
+/* ============ TOURNAMENT ============ */
+function initialBracket(){
+ return {
+  qf1:{aSeed:3,bSeed:6,winnerSeed:null,status:"pending",roomCode:null},
+  qf2:{aSeed:4,bSeed:5,winnerSeed:null,status:"pending",roomCode:null},
+  sf1:{aSeed:1,bSeed:null,winnerSeed:null,status:"pending",roomCode:null},
+  sf2:{aSeed:2,bSeed:null,winnerSeed:null,status:"pending",roomCode:null},
+  final:{aSeed:null,bSeed:null,winnerSeed:null,status:"pending",roomCode:null}
+ };
+}
+function tid(){let s="";for(let i=0;i<5;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+let currentTournament=null,currentTournamentId=null,tournUnsub=null;
+
+document.getElementById("createTourn").onclick=async()=>{
+ let names=[1,2,3,4,5,6].map(i=>document.getElementById("t"+i).value.trim());
+ if(names.some(n=>!n)){alert("Enter all 6 player names.");return}
+ try{
+  const id=tid();const ref=doc(db,"tournaments",id);
+  const data={name:"6-Player Tournament",teams:names,bracket:initialBracket(),champion:null,createdAt:Date.now()};
+  await setDoc(ref,data);
+  openTournament(id);
+ }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
+};
+document.getElementById("loadTourn").onclick=()=>{
+ let id=document.getElementById("tid").value.trim().toUpperCase();
+ if(!id){alert("Enter a Tournament ID.");return}
+ openTournament(id);
+};
+function openTournament(id){
+ currentTournamentId=id;
+ document.getElementById("tournHome").classList.add("hidden");
+ document.getElementById("tournView").classList.remove("hidden");
+ document.getElementById("tournMatch").classList.add("hidden");
+ document.getElementById("tournIdShow").textContent=id;
+ if(tournUnsub)tournUnsub();
+ const ref=doc(db,"tournaments",id);
+ tournUnsub=onSnapshot(ref,s=>{
+  if(!s.exists()){alert("Tournament not found.");backToHome();return}
+  currentTournament=s.data();
+  document.getElementById("tournName").textContent=currentTournament.name;
+  renderBracket();
+ },e=>alert("Firebase error: "+e.message));
+}
+function backToHome(){
+ if(tournUnsub)tournUnsub();
+ document.getElementById("tournHome").classList.remove("hidden");
+ document.getElementById("tournView").classList.add("hidden");
+ document.getElementById("tournMatch").classList.add("hidden");
+}
+document.getElementById("backHome").onclick=backToHome;
+
+function teamName(seed){return seed?currentTournament.teams[seed-1]:"TBD"}
+function renderBracket(){
+ const t=currentTournament,b=t.bracket;
+ document.getElementById("champBox").innerHTML=t.champion?`<div class="champ">🏆 Champion: ${teamName(t.champion)}</div>`:"";
+ const order=[["qf1","Quarterfinal 1"],["qf2","Quarterfinal 2"],["sf1","Semifinal 1"],["sf2","Semifinal 2"],["final","Final"]];
+ document.getElementById("bracketBox").innerHTML=order.map(([key,label])=>{
+  const m=b[key];
+  const canPlay=m.aSeed&&m.bSeed&&m.status!=="done";
+  const aWin=m.winnerSeed===m.aSeed,bWin=m.winnerSeed===m.bSeed;
+  return `<div class="bmatch"><div class="rd">${label}</div>
+   <div class="bp2 ${aWin?"win":""}">${teamName(m.aSeed)}${aWin?" ✓":""}</div>
+   <div class="bp2 ${bWin?"win":""}">${teamName(m.bSeed)}${bWin?" ✓":""}</div>
+   ${canPlay?`<button data-match="${key}" class="playMatchBtn primary" style="margin-top:8px">Play This Match</button>`:(m.status==="done"?"":"<div class=\"muted\" style=\"margin-top:6px\">Waiting for players</div>")}
+  </div>`;
+ }).join("");
+ document.querySelectorAll(".playMatchBtn").forEach(btn=>{
+  btn.onclick=()=>openMatch(btn.getAttribute("data-match"));
+ });
+}
+
+const tournUI=makeBoardUI("board-tourn","status-tourn","moves-tourn",null,null);
+let T={board:null,turn:"w",selected:null,legal:[],flipped:false,hint:null,onClick:tournClick};
+let tournRoomRef=null,tournRoomUnsub=null,tournRoom=null,tournMyColor=null,tournBusy=false,tournMatchKey=null;
+
+async function openMatch(matchKey){
+ tournMatchKey=matchKey;
+ const m=currentTournament.bracket[matchKey];
+ document.getElementById("tournView").classList.add("hidden");
+ document.getElementById("tournMatch").classList.remove("hidden");
+ let roomId=m.roomCode;
+ const tref=doc(db,"tournaments",currentTournamentId);
+ if(!roomId){
+  roomId=code();
+  try{
+   await runTransaction(db,async tx=>{
+    const snap=await tx.get(tref);const data=snap.data();
+    if(data.bracket[matchKey].roomCode){roomId=data.bracket[matchKey].roomCode;return}
+    const nb={...data.bracket,[matchKey]:{...data.bracket[matchKey],roomCode:roomId,status:"live"}};
+    tx.update(tref,{bracket:nb});
+   });
+  }catch(e){console.error(e);alert("Could not start match: "+e.message);return}
+  const rref=doc(db,"chessRooms",roomId);
+  const rsnap=await getDoc(rref);
+  if(!rsnap.exists()){
+   await setDoc(rref,{board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],
+    whiteId:null,whiteName:teamName(m.aSeed),blackId:null,blackName:teamName(m.bSeed),
+    status:"waiting",winner:null,tournamentId:currentTournamentId,matchKey,whiteSeed:m.aSeed,blackSeed:m.bSeed,updatedAt:Date.now()});
+  }
+ }
+ tournRoomRef=doc(db,"chessRooms",roomId);
+ let s=await getDoc(tournRoomRef);let d=s.data();
+ if(d.whiteId===playerId)tournMyColor="w";
+ else if(d.blackId===playerId)tournMyColor="b";
+ else if(!d.whiteId){await updateDoc(tournRoomRef,{whiteId:playerId,updatedAt:Date.now()});tournMyColor="w"}
+ else if(!d.blackId){await updateDoc(tournRoomRef,{blackId:playerId,status:"playing",updatedAt:Date.now()});tournMyColor="b"}
+ else{tournMyColor=null} // spectator
+ listenTournMatch();
+}
+function listenTournMatch(){
+ if(tournRoomUnsub)tournRoomUnsub();
+ tournRoomUnsub=onSnapshot(tournRoomRef,async s=>{
+  if(!s.exists())return;
+  tournRoom=s.data();T.board=tournRoom.board;T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];
+  document.querySelector("#tourn-white b").textContent=(tournRoom.whiteName||"Waiting")+(tournMyColor==="w"?" (You)":"");
+  document.querySelector("#tourn-black b").textContent=(tournRoom.blackName||"Waiting")+(tournMyColor==="b"?" (You)":"");
+  if(tournRoom.winner){
+   say(tournUI.statusEl,tournRoom.winner==="draw"?"Draw":(tournRoom.winner==="w"?tournRoom.whiteName:tournRoom.blackName)+" wins","Game over");
+   await recordMatchResult(tournRoom.winner);
+  }else if(tournRoom.status==="waiting")say(tournUI.statusEl,"Waiting for opponent","");
+  else say(tournUI.statusEl,tournRoom.turn===tournMyColor?"Your turn":(tournMyColor?"Opponent's turn":"Spectating"),tournRoom.turn==="w"?"White to move":"Black to move");
+  renderBoard(tournUI,T);
+ });
+}
+async function recordMatchResult(winnerColor){
+ if(winnerColor==="draw")return; // draws not auto-advanced; organizer can replay by re-opening match
+ const winnerSeed=winnerColor==="w"?tournRoom.whiteSeed:tournRoom.blackSeed;
+ const tref=doc(db,"tournaments",currentTournamentId);
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tref);const data=snap.data();
+   const bkt=data.bracket;
+   if(bkt[tournMatchKey].status==="done")return; // already recorded
+   bkt[tournMatchKey]={...bkt[tournMatchKey],winnerSeed,status:"done"};
+   let champion=data.champion;
+   if(tournMatchKey==="qf1")bkt.sf2.bSeed=winnerSeed;
+   if(tournMatchKey==="qf2")bkt.sf1.bSeed=winnerSeed;
+   if(tournMatchKey==="sf1")bkt.final.aSeed=winnerSeed;
+   if(tournMatchKey==="sf2")bkt.final.bSeed=winnerSeed;
+   if(tournMatchKey==="final")champion=winnerSeed;
+   tx.update(tref,{bracket:bkt,champion});
+  });
+ }catch(e){console.error(e)}
+}
+function tournClick(r,c){
+ if(!tournRoom||tournRoom.status!=="playing"||tournRoom.turn!==tournMyColor||tournBusy)return;
+ T.hint=null;
+ let p=T.board[r][c],m=T.legal.find(x=>x.tr===r&&x.tc===c);
+ if(T.selected&&m){sendTournMove(m);return}
+ if(p&&pcolor(p)===tournMyColor){T.selected=[r,c];T.legal=legalMoves(T.board,tournMyColor,tournRoom.castling,tournRoom.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(tournUI,T)}
+ else{T.selected=null;T.legal=[];renderBoard(tournUI,T)}
+}
+async function sendTournMove(m){
+ if(tournBusy)return;tournBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tournRoomRef);if(!snap.exists())throw Error("Room does not exist");
+   const d=snap.data();if(d.turn!==tournMyColor)throw Error("Not your turn");
+   const b=d.board.map(a=>a.slice()),cast={...d.castling},ep=d.ep;
+   const lm=legalMoves(b,tournMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
+   const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
+   let hist=[...(d.history||[]),note],next=opp(tournMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
+   if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?tournMyColor:"draw"}
+   tx.update(tournRoomRef,{board:ap.nb,castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,updatedAt:Date.now()});
+  });
+ }catch(e){console.error(e);alert(e.message)}finally{tournBusy=false}
+}
+document.getElementById("flip-tourn").onclick=()=>{T.flipped=!T.flipped;renderBoard(tournUI,T)};
+document.getElementById("hint-tourn").onclick=()=>{
+ if(!tournRoom||tournRoom.status!=="playing"||tournRoom.turn!==tournMyColor)return;
+ let m=bestMove(T.board,tournMyColor,tournRoom.castling,tournRoom.ep,2);
+ if(m){T.hint=m;renderBoard(tournUI,T);say(tournUI.statusEl,"Your turn","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
+document.getElementById("backBracket").onclick=()=>{
+ if(tournRoomUnsub)tournRoomUnsub();
+ document.getElementById("tournMatch").classList.add("hidden");
+ document.getElementById("tournView").classList.remove("hidden");
+};
+
+/* ============ NAV ============ */
+function showScreen(name){
+ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById("scr"+name).classList.add("active");
+ document.getElementById("nav"+name).classList.add("active");
+}
+document.getElementById("navLocal").onclick=()=>showScreen("Local");
+document.getElementById("navOnline").onclick=()=>showScreen("Online");
+document.getElementById("navTourn").onclick=()=>showScreen("Tourn");
+
+/* ============ INIT ============ */
+try{
+ const app=initializeApp(firebaseConfig);db=getFirestore(app);
+ document.getElementById("net").textContent="Firebase: connected";
+}catch(e){document.getElementById("net").textContent="Firebase: error — "+e.message}
+newLocalGame();
 </script>
 </body>
 </html>
