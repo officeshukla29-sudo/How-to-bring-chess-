@@ -39,6 +39,9 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 .champ{font-size:20px;font-weight:800;color:#facc15;text-align:center;padding:16px;background:#0e1726;border-radius:12px;margin-top:10px}
 .online .card{margin-bottom:0}
 @media(max-width:900px){.grid{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status,.modeRow,.buttons,.title,.moves,.room,.players{grid-column:span 2}.moves{height:170px}}
+.grid.fs-active{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;background:#0d1321;width:100vw;height:100vh;overflow:auto;padding:16px;box-sizing:border-box;gap:16px}
+.grid.fs-active .boardCard{width:min(94vw,80vh,640px);flex:none}
+.grid.fs-active .panel{width:min(94vw,640px)}
 @media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.piece{font-size:clamp(29px,11vw,46px)}}
 </style>
 </head>
@@ -62,6 +65,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <select id="diff"><option value="1">Computer: Easy</option><option value="2" selected>Computer: Medium</option><option value="3">Computer: Hard</option></select>
 </div>
 <div class="buttons"><button id="newgame" class="primary">New Game</button><button id="flip-local">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-local">⛶ Full Screen</button></div>
 <div class="buttons"><button id="hint-local" class="hintbtn">💡 Hint</button><button id="undo">Undo</button></div>
 <div class="title">Captured</div><div class="cap" id="capWhite-local"></div><div class="cap" id="capBlack-local"></div>
 <div class="title">Move History</div><div id="moves-local" class="moves"></div>
@@ -88,6 +92,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div class="buttons"><button id="createRoom" class="primary">Create Room</button><button id="joinRoom">Join Room</button></div>
 <div class="players"><div class="player" id="online-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="online-black"><span>♚ Black</span><b>Waiting</b></div></div>
 <div class="buttons"><button id="hint-online" class="hintbtn">💡 Hint</button><button id="flip-online">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-online">⛶ Full Screen</button></div>
 <div class="buttons"><button id="resignOnline">Resign</button></div>
 <div class="title">Move History</div><div id="moves-online" class="moves"></div>
 </div>
@@ -131,6 +136,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div id="timer-tourn" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
 <div class="players"><div class="player" id="tourn-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="tourn-black"><span>♚ Black</span><b>Waiting</b></div></div>
 <div class="buttons"><button id="hint-tourn" class="hintbtn">💡 Hint</button><button id="flip-tourn">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-tourn">⛶ Full Screen</button></div>
 <button id="backBracket" style="margin-bottom:12px">← Back to Bracket</button>
 <div class="title">Move History</div><div id="moves-tourn" class="moves"></div>
 </div>
@@ -858,6 +864,33 @@ document.getElementById("backBracket").onclick=()=>{
  document.getElementById("tournMatch").classList.add("hidden");
  document.getElementById("tournView").classList.remove("hidden");
 };
+
+/* ============ FULL SCREEN BOARD ============ */
+function setupFullscreen(boardElId,btnId){
+ const btn=document.getElementById(btnId);
+ const target=document.getElementById(boardElId).closest(".grid");
+ if(!btn||!target)return;
+ btn.onclick=()=>{
+  const isFs=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!isFs){
+   const req=target.requestFullscreen||target.webkitRequestFullscreen;
+   if(!req){alert("Full screen isn't supported on this browser/device.");return}
+   req.call(target).catch(e=>alert("Couldn't enter full screen: "+e.message));
+  }else{
+   (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+ };
+ const onChange=()=>{
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  if(fsEl===target){target.classList.add("fs-active");btn.textContent="✕ Exit Full Screen"}
+  else{target.classList.remove("fs-active");btn.textContent="⛶ Full Screen"}
+ };
+ document.addEventListener("fullscreenchange",onChange);
+ document.addEventListener("webkitfullscreenchange",onChange);
+}
+setupFullscreen("board-local","fullscreen-local");
+setupFullscreen("board-online","fullscreen-online");
+setupFullscreen("board-tourn","fullscreen-tourn");
 
 /* ============ NAV ============ */
 function showScreen(name){
