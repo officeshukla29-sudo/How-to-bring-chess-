@@ -13,11 +13,27 @@ h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
 .nav button.active{background:#22c55e;color:#05220e;border-color:#22c55e}
 .screen{display:none}.screen.active{display:block}
 .grid{display:grid;grid-template-columns:minmax(320px,760px) 320px;gap:18px}
-.card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}.boardCard{padding:12px}.board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none}
-.sq{position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer}.light{background:#f0d9b5}.dark{background:#b58863}
+.card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}.boardCard{padding:12px}.board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none}
+.sq{position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:filter .12s}
+.sq:hover{filter:brightness(1.08)}
+.light{background:linear-gradient(160deg,#f3e0bd,#e8c99a)}.dark{background:linear-gradient(160deg,#a9764f,#8a5c3b)}
 .sq.sel{box-shadow:inset 0 0 0 5px #facc15}.sq.check{background-image:linear-gradient(#ef4444aa,#ef4444aa)}.sq.hint{box-shadow:inset 0 0 0 4px #38bdf8}
+.sq.lastmove{background-image:linear-gradient(#facc1550,#facc1550)}
 .sq.move:after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;background:#22c55e88}.sq.capture:after{content:"";position:absolute;inset:7%;border:5px solid #22c55e88;border-radius:50%}
-.piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2}.wp{color:#fff;text-shadow:0 2px 2px #222}.bp{color:#111;text-shadow:0 1px 1px #fff}
+.piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2;transition:transform .12s}
+.wp{color:#fdfdfd;text-shadow:0 1px 0 #fff8,0 3px 3px #0006,0 6px 8px #0007}
+.bp{color:#171717;text-shadow:0 1px 0 #fff5,0 2px 3px #0009}
+.sq.sel .piece{transform:scale(1.08)}
+.boardCard{perspective:1500px}
+.board{box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 18px 40px -12px #000a;border-radius:8px;transition:transform .35s ease;position:relative}
+.board.board3d{transform:rotateX(var(--tiltX,52deg)) rotateY(var(--tiltY,0deg)) scale(1.2);transform-origin:50% 78%;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 55px 70px -20px #000d}
+.board.board3d::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 90% 60% at 50% 8%,#fff3,transparent 65%);pointer-events:none;z-index:1}
+.board.board3d .sq.light{background:linear-gradient(160deg,#f6e5c4,#e0bd8e)}
+.board.board3d .sq.dark{background:linear-gradient(160deg,#a06a42,#7c4f32)}
+.board.board3d .piece{text-shadow:0 12px 10px rgba(0,0,0,.6),0 2px 0 rgba(255,255,255,.25);transform:translateY(-8%);position:relative}
+.board.board3d .piece:after{content:"";position:absolute;left:50%;bottom:-38%;width:70%;height:22%;background:radial-gradient(ellipse,rgba(0,0,0,.45),transparent 72%);transform:translateX(-50%);z-index:-1}
+.board.board3d .sq.sel .piece{transform:translateY(-16%) scale(1.1)}
+.board.board3d .sq:hover .piece{transform:translateY(-12%) scale(1.04)}
 .coord{position:absolute;font-size:10px;font-weight:700;opacity:.65}.rank{top:3px;left:4px}.file{bottom:3px;right:4px}.light .coord{color:#765536}.dark .coord{color:#f7dfb8}
 .panel{padding:17px}.status{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px;margin-bottom:12px}.status b{font-size:18px}.status div{color:#94a3b8;font-size:12px;margin-top:3px}
 select,button,input{font:inherit;border:0;border-radius:10px;padding:11px 12px}select,input{background:#0e1726;color:white;border:1px solid #35445b;width:100%}
@@ -47,7 +63,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 </head>
 <body>
 <div class="app">
-<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div id="net" class="muted">Firebase: connecting…</div></div>
+<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div style="display:flex;align-items:center;gap:12px"><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
 <div class="nav">
 <button id="navLocal" class="active">Quick Play</button>
 <button id="navOnline">Online 1v1</button>
@@ -65,7 +81,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <select id="diff"><option value="1">Computer: Easy</option><option value="2" selected>Computer: Medium</option><option value="3">Computer: Hard</option></select>
 </div>
 <div class="buttons"><button id="newgame" class="primary">New Game</button><button id="flip-local">Flip Board</button></div>
-<div class="buttons"><button id="fullscreen-local">⛶ Full Screen</button></div>
+<div class="buttons"><button id="fullscreen-local">⛶ Full Screen</button><button id="threeD-local">🧊 3D View</button></div>
 <div class="buttons"><button id="hint-local" class="hintbtn">💡 Hint</button><button id="undo">Undo</button></div>
 <div class="title">Captured</div><div class="cap" id="capWhite-local"></div><div class="cap" id="capBlack-local"></div>
 <div class="title">Move History</div><div id="moves-local" class="moves"></div>
@@ -92,7 +108,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div class="buttons"><button id="createRoom" class="primary">Create Room</button><button id="joinRoom">Join Room</button></div>
 <div class="players"><div class="player" id="online-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="online-black"><span>♚ Black</span><b>Waiting</b></div></div>
 <div class="buttons"><button id="hint-online" class="hintbtn">💡 Hint</button><button id="flip-online">Flip Board</button></div>
-<div class="buttons"><button id="fullscreen-online">⛶ Full Screen</button></div>
+<div class="buttons"><button id="fullscreen-online">⛶ Full Screen</button><button id="threeD-online">🧊 3D View</button></div>
 <div class="buttons"><button id="resignOnline">Resign</button></div>
 <div class="title">Move History</div><div id="moves-online" class="moves"></div>
 </div>
@@ -105,12 +121,15 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div class="grid" style="grid-template-columns:1fr 1fr">
 <div class="card panel">
 <div class="title">Create Tournament (6 players)</div>
+<button id="buildViaInvites" class="primary" style="margin-bottom:10px">🎯 Build via Invites</button>
+<div class="muted" style="margin-bottom:14px">Recruit real people from your Active Players list — as each one accepts, they're locked into a seed. Once all 6 are in, the bracket starts automatically.</div>
+<div class="title" style="margin:0 0 7px">Or enter names manually</div>
 <div class="tform">
 <input id="t1" placeholder="Player 1 (seed 1)"><input id="t2" placeholder="Player 2 (seed 2)">
 <input id="t3" placeholder="Player 3 (seed 3)"><input id="t4" placeholder="Player 4 (seed 4)">
 <input id="t5" placeholder="Player 5 (seed 5)"><input id="t6" placeholder="Player 6 (seed 6)">
 </div>
-<button id="createTourn" class="primary">Create Tournament</button>
+<button id="createTourn">Create Tournament</button>
 <div class="muted" style="margin-top:8px">Seeds 1 &amp; 2 get a bye straight to semifinals. Seeds 3-6 play quarterfinals.</div>
 </div>
 <div class="card panel">
@@ -125,6 +144,11 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div class="card panel" style="margin-bottom:16px">
 <div class="top" style="margin-bottom:0"><div><b id="tournName" style="font-size:20px"></b><div class="muted">Tournament ID: <b id="tournIdShow"></b></div></div><button id="backHome">← Back</button></div>
 </div>
+<div id="recruitBox" class="hidden card panel" style="margin-bottom:16px">
+<div class="title" style="margin-top:0">Recruiting Players</div>
+<div id="recruitSeats" class="players"></div>
+<div class="muted">Share Tournament ID <b id="recruitIdShow"></b> so players can also join with "Load" and watch live. Only the organizer can send invites for open seats.</div>
+</div>
 <div id="champBox"></div>
 <div class="bracket" id="bracketBox"></div>
 </div>
@@ -136,7 +160,7 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 <div id="timer-tourn" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
 <div class="players"><div class="player" id="tourn-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="tourn-black"><span>♚ Black</span><b>Waiting</b></div></div>
 <div class="buttons"><button id="hint-tourn" class="hintbtn">💡 Hint</button><button id="flip-tourn">Flip Board</button></div>
-<div class="buttons"><button id="fullscreen-tourn">⛶ Full Screen</button></div>
+<div class="buttons"><button id="fullscreen-tourn">⛶ Full Screen</button><button id="threeD-tourn">🧊 3D View</button></div>
 <button id="backBracket" style="margin-bottom:12px">← Back to Bracket</button>
 <div class="title">Move History</div><div id="moves-tourn" class="moves"></div>
 </div>
@@ -341,10 +365,67 @@ function bestMove(board,turn,castling,ep,depth){
 }
 
 /* ============ REUSABLE BOARD RENDERER ============ */
+/* ---- Sound engine (no external files) ---- */
+let audioCtx=null,soundMuted=localStorage.getItem("chessMuted")==="1";
+function beep(freq,dur,type,vol){
+ if(soundMuted)return;
+ try{
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.value=vol;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+  o.stop(audioCtx.currentTime+dur);
+ }catch(e){}
+}
+function playMoveSound(capture,check){
+ if(check)beep(880,.2,"square",.1);
+ else if(capture)beep(200,.14,"sawtooth",.14);
+ else beep(440,.09,"sine",.09);
+}
+document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+document.getElementById("muteBtn").onclick=()=>{
+ soundMuted=!soundMuted;localStorage.setItem("chessMuted",soundMuted?"1":"0");
+ document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+};
+
+/* ---- 3D board view toggle ---- */
+function setup3D(boardElId,btnId){
+ const btn=document.getElementById(btnId),boardEl=document.getElementById(boardElId);
+ if(!btn||!boardEl)return;
+ const key="chess3D-"+boardElId;
+ if(localStorage.getItem(key)==="1"){boardEl.classList.add("board3d");btn.textContent="🧊 2D View"}
+ btn.onclick=()=>{
+  const on=boardEl.classList.toggle("board3d");
+  btn.textContent=on?"🧊 2D View":"🧊 3D View";
+  localStorage.setItem(key,on?"1":"0");
+  if(!on){boardEl.style.removeProperty("--tiltX");boardEl.style.removeProperty("--tiltY")}
+ };
+ // Mouse/touch parallax: subtly steer the tilt toward the pointer so the board feels alive in 3D mode.
+ const boardCard=boardEl.closest(".boardCard");
+ function steer(clientX,clientY){
+  if(!boardEl.classList.contains("board3d"))return;
+  const rect=boardCard.getBoundingClientRect();
+  const px=(clientX-rect.left)/rect.width,py=(clientY-rect.top)/rect.height;
+  const tiltX=44+(1-py)*16,tiltY=(px-0.5)*22;
+  boardEl.style.setProperty("--tiltX",tiltX.toFixed(1)+"deg");
+  boardEl.style.setProperty("--tiltY",tiltY.toFixed(1)+"deg");
+ }
+ if(boardCard){
+  boardCard.addEventListener("mousemove",e=>steer(e.clientX,e.clientY));
+  boardCard.addEventListener("mouseleave",()=>{boardEl.style.setProperty("--tiltX","52deg");boardEl.style.setProperty("--tiltY","0deg")});
+  boardCard.addEventListener("touchmove",e=>{if(e.touches[0])steer(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+ }
+}
+setup3D("board-local","threeD-local");
+setup3D("board-online","threeD-online");
+setup3D("board-tourn","threeD-tourn");
+
 function makeBoardUI(elId,statusId,movesId,capWId,capBId){
  return {
   el:document.getElementById(elId),statusEl:statusId?document.getElementById(statusId):null,
-  movesEl:movesId?document.getElementById(movesId):null,capWEl:capWId?document.getElementById(capWId):null,capBEl:capBId?document.getElementById(capBId):null
+  movesEl:movesId?document.getElementById(movesId):null,capWEl:capWId?document.getElementById(capWId):null,capBEl:capBId?document.getElementById(capBId):null,
+  _lastKey:null
  }
 }
 function say(statusEl,a,b){if(statusEl)statusEl.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
@@ -358,6 +439,7 @@ function renderBoard(ui,state){
   let lm=state.legal.find(m=>m.tr===r&&m.tc===c);if(lm)s.classList.add(state.board[r][c]?"capture":"move");
   let k=king(state.board,state.turn);if(k&&k[0]===r&&k[1]===c&&inCheck(state.board,state.turn))s.classList.add("check");
   if(state.hint&&((state.hint.fr===r&&state.hint.fc===c)||(state.hint.tr===r&&state.hint.tc===c)))s.classList.add("hint");
+  if(state.lastMove&&((state.lastMove.fr===r&&state.lastMove.fc===c)||(state.lastMove.tr===r&&state.lastMove.tc===c)))s.classList.add("lastmove");
   if(state.board[r][c]){let z=document.createElement("span");z.className="piece "+(pcolor(state.board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[state.board[r][c]];s.appendChild(z)}
   if(ci===0){let z=document.createElement("span");z.className="coord rank";z.textContent=8-r;s.appendChild(z)}
   if(ri===7){let z=document.createElement("span");z.className="coord file";z.textContent=FILES[c];s.appendChild(z)}
@@ -370,6 +452,11 @@ function renderBoard(ui,state){
  }
  if(ui.capWEl)ui.capWEl.innerHTML=(state.captured?.b||[]).map(p=>PIECES[p]).join(" ");
  if(ui.capBEl)ui.capBEl.innerHTML=(state.captured?.w||[]).map(p=>PIECES[p]).join(" ");
+ if(state.lastMove){
+  const mvKey=state.lastMove.fr+","+state.lastMove.fc+","+state.lastMove.tr+","+state.lastMove.tc+","+(state.history?state.history.length:0);
+  if(ui._lastKey!==mvKey)playMoveSound(!!state.lastMove.captured,king(state.board,state.turn)&&inCheck(state.board,state.turn));
+  ui._lastKey=mvKey;
+ }
 }
 
 /* ============ QUICK PLAY (LOCAL) ============ */
@@ -396,7 +483,7 @@ function makeLocalMove(m){
  let note=notation(L.board,m,L.castling,L.ep);
  let{nb,nc,nep}=applyMove(L.board,m,L.castling,L.ep);
  if(m.captured)L.captured[pcolor(m.captured)].push(m.captured);
- L.history.push(note);L.board=nb;L.castling=nc;L.ep=nep;L.turn=opp(L.turn);L.selected=null;L.legal=[];L.hint=null;
+ L.history.push(note);L.board=nb;L.castling=nc;L.ep=nep;L.turn=opp(L.turn);L.selected=null;L.legal=[];L.hint=null;L.lastMove=m;
  let moves=legalMoves(L.board,L.turn,L.castling,L.ep);
  if(!moves.length){L.gameOver=true;if(inCheck(L.board,L.turn))say(localUI.statusEl,L.turn==="w"?"Black wins":"White wins","Checkmate");else say(localUI.statusEl,"Draw","Stalemate")}
  else if(inCheck(L.board,L.turn))say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","Check!");
@@ -433,7 +520,7 @@ document.getElementById("undo").onclick=()=>{
 /* ============ ONLINE 1v1 ============ */
 const ONLINE_SECONDS=30;
 const onlineUI=makeBoardUI("board-online","status-online","moves-online",null,null);
-let O={board:null,turn:"w",castling:null,ep:null,history:[],selected:null,legal:[],flipped:false,hint:null,onClick:onlineClick};
+let O={board:null,turn:"w",castling:null,ep:null,history:[],selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:onlineClick};
 let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false;
 let onlineTurnKey=null,onlineAutoMoved=false,myInviteUnsub=null,incomingUnsub=null;
 function onlineClick(r,c){
@@ -448,7 +535,7 @@ function optimisticOnlineMove(m){
  // Render the move instantly (don't wait for the Firestore round-trip) so play feels fast; the
  // background write in sendOnlineMove() is still the source of truth and will correct any conflict.
  const ap=applyMove(O.board,m,onlineRoom.castling,onlineRoom.ep);
- O.board=ap.nb;O.selected=null;O.legal=[];O.hint=null;
+ O.board=ap.nb;O.selected=null;O.legal=[];O.hint=null;O.lastMove=m;
  renderBoard(onlineUI,O);
  say(onlineUI.statusEl,"Opponent's turn","Move sent…");
  sendOnlineMove(m);
@@ -464,7 +551,7 @@ async function sendOnlineMove(m){
    const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
    let hist=[...(d.history||[]),note],next=opp(onlineMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
    if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?onlineMyColor:"draw"}
-   tx.update(onlineRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,turnStartedAt:Date.now(),updatedAt:Date.now()});
+   tx.update(onlineRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,lastMove:{fr:lm.fr,fc:lm.fc,tr:lm.tr,tc:lm.tc,captured:!!lm.captured},turnStartedAt:Date.now(),updatedAt:Date.now()});
   });
  }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
 }
@@ -493,7 +580,7 @@ function listenOnline(id){
  localStorage.setItem("chessLastRoom",id);checkRejoinAvailable();
  onlineUnsub=onSnapshot(onlineRoomRef,s=>{
   if(!s.exists()){say(onlineUI.statusEl,"Room closed","");return}
-  onlineRoom=s.data();O.board=unflattenBoard(onlineRoom.board);O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];
+  onlineRoom=s.data();O.board=unflattenBoard(onlineRoom.board);O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];O.lastMove=onlineRoom.lastMove||O.lastMove;
   const turnKey=onlineRoom.turn+"-"+(onlineRoom.history?onlineRoom.history.length:0);
   if(turnKey!==onlineTurnKey){onlineTurnKey=turnKey;onlineAutoMoved=false}
   document.querySelector("#online-white b").textContent=(onlineRoom.whiteName||"Waiting")+(onlineMyColor==="w"?" (You)":"");
@@ -604,7 +691,8 @@ function listenIncomingInvites(){
   banner.classList.remove("hidden");
   banner.innerHTML=snap.docs.map(d=>{
    const v=d.data();
-   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span><b>${v.fromName||v.fromCode}</b> wants to play</span><span style="display:flex;gap:6px"><button data-acc="${d.id}" class="primary" style="padding:8px 10px">Accept</button><button data-dec="${d.id}" style="padding:8px 10px">Decline</button></span></div>`;
+   const label=v.type==="tournament"?`invited you to <b>${v.tournamentName||"a tournament"}</b> — Seed ${v.seed}`:"wants to play a game";
+   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span><b>${v.fromName||v.fromCode}</b> ${label}</span><span style="display:flex;gap:6px"><button data-acc="${d.id}" class="primary" style="padding:8px 10px">Accept</button><button data-dec="${d.id}" style="padding:8px 10px">Decline</button></span></div>`;
   }).join("");
   banner.querySelectorAll("[data-acc]").forEach(btn=>{
    const inv=snap.docs.find(d=>d.id===btn.getAttribute("data-acc")).data();
@@ -614,6 +702,7 @@ function listenIncomingInvites(){
  },e=>console.error(e));
 }
 async function acceptInvite(id,inv){
+ if(inv.type==="tournament"){await acceptTournamentInvite(id,inv);return}
  try{
   const roomId=code();onlineRoomRef=doc(db,"chessRooms",roomId);
   const init={board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:inv.fromId,whiteName:inv.fromName||inv.fromCode,blackId:playerId,blackName:myName,status:"playing",winner:null,turnStartedAt:Date.now(),updatedAt:Date.now()};
@@ -623,14 +712,31 @@ async function acceptInvite(id,inv){
   listenOnline(roomId);showScreen("Online");
  }catch(e){console.error(e);alert("Could not start game: "+(e.code||e.message))}
 }
+async function acceptTournamentInvite(id,inv){
+ try{
+  const tRef=doc(db,"tournaments",inv.tournamentId);
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tRef);if(!snap.exists())throw Error("This tournament no longer exists.");
+   const d=snap.data();
+   if(d.teams[inv.seed-1])throw Error("That seat was already filled.");
+   const teams=[...d.teams];teams[inv.seed-1]=myName;
+   const teamIds=[...(d.teamIds||[null,null,null,null,null,null])];teamIds[inv.seed-1]=playerId;
+   const allFilled=teams.every(n=>n);
+   tx.update(tRef,{teams,teamIds,status:allFilled?"active":"recruiting"});
+  });
+  await updateDoc(doc(db,"invites",id),{status:"accepted"});
+  document.getElementById("tid").value=inv.tournamentId;
+  openTournament(inv.tournamentId);
+  showScreen("Tourn");
+ }catch(e){console.error(e);alert("Could not join tournament: "+(e.code||e.message))}
+}
 async function declineInvite(id){
  try{await updateDoc(doc(db,"invites",id),{status:"declined"})}catch(e){console.error(e)}
 }
 
-/* ---- Active Players popup ---- */
+/* ---- Active Players popup (used for both 1v1 invites and tournament-seat invites) ---- */
 let activePlayersUnsub=null;
-document.getElementById("showActiveBtn").onclick=async()=>{
- if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+function openActivePlayersModal(onPick){
  document.getElementById("activeModal").classList.remove("hidden");
  document.getElementById("activeList").innerHTML="Loading…";
  if(activePlayersUnsub)activePlayersUnsub();
@@ -638,7 +744,7 @@ document.getElementById("showActiveBtn").onclick=async()=>{
  activePlayersUnsub=onSnapshot(q,snap=>{
   const now=Date.now(),list=document.getElementById("activeList");
   const rows=snap.docs.filter(d=>{const v=d.data();return d.id!==myCode&&(now-(v.updatedAt||0))<90000});
-  if(!rows.length){list.innerHTML='<div class="muted">No one else is active right now. Share your Player ID above so a friend can invite you!</div>';return}
+  if(!rows.length){list.innerHTML='<div class="muted">No one else is active right now. Ask a friend to open the Online tab so they show up here.</div>';return}
   list.innerHTML=rows.map(d=>{
    const v=d.data();
    return `<div class="player" style="margin-bottom:8px"><span>🟢 <b>${v.name||d.id}</b><div class="muted" style="font-size:11px">${d.id}</div></span><button data-inv="${d.id}" class="primary" style="padding:8px 12px">Invite</button></div>`;
@@ -647,10 +753,14 @@ document.getElementById("showActiveBtn").onclick=async()=>{
    btn.onclick=async()=>{
     document.getElementById("activeModal").classList.add("hidden");
     if(activePlayersUnsub){activePlayersUnsub();activePlayersUnsub=null}
-    await sendInviteToCode(btn.getAttribute("data-inv"));
+    await onPick(btn.getAttribute("data-inv"));
    };
   });
  },e=>{console.error(e);document.getElementById("activeList").innerHTML='<div class="muted">Could not load active players: '+(e.code||e.message)+'</div>'});
+}
+document.getElementById("showActiveBtn").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ openActivePlayersModal(code=>sendInviteToCode(code));
 };
 document.getElementById("closeActiveModal").onclick=()=>{
  document.getElementById("activeModal").classList.add("hidden");
@@ -677,7 +787,16 @@ document.getElementById("createTourn").onclick=async()=>{
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=tid();const ref=doc(db,"tournaments",id);
-  const data={name:"6-Player Tournament",teams:names,bracket:initialBracket(),champion:null,createdAt:Date.now()};
+  const data={name:"6-Player Tournament",teams:names,teamIds:[null,null,null,null,null,null],bracket:initialBracket(),champion:null,status:"active",organizerId:playerId,createdAt:Date.now()};
+  await setDoc(ref,data);
+  openTournament(id);
+ }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
+};
+document.getElementById("buildViaInvites").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const id=tid();const ref=doc(db,"tournaments",id);
+  const data={name:myName+"'s Tournament",teams:[myName,"","","","",""],teamIds:[playerId,null,null,null,null,null],bracket:initialBracket(),champion:null,status:"recruiting",organizerId:playerId,createdAt:Date.now()};
   await setDoc(ref,data);
   openTournament(id);
  }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
@@ -695,12 +814,15 @@ function openTournament(id){
  document.getElementById("tournView").classList.remove("hidden");
  document.getElementById("tournMatch").classList.add("hidden");
  document.getElementById("tournIdShow").textContent=id;
+ document.getElementById("recruitIdShow").textContent=id;
  if(tournUnsub)tournUnsub();
  const ref=doc(db,"tournaments",id);
  tournUnsub=onSnapshot(ref,s=>{
   if(!s.exists()){alert("Tournament not found.");backToHome();return}
   currentTournament=s.data();
   document.getElementById("tournName").textContent=currentTournament.name;
+  document.getElementById("recruitBox").classList.toggle("hidden",currentTournament.status!=="recruiting");
+  if(currentTournament.status==="recruiting")renderRecruit();
   renderBracket();
  },e=>alert("Firebase error: "+e.message));
 }
@@ -712,14 +834,39 @@ function backToHome(){
 }
 document.getElementById("backHome").onclick=backToHome;
 
-function teamName(seed){return seed?currentTournament.teams[seed-1]:"TBD"}
+async function sendTournamentInviteToCode(target,seed){
+ if(target===myCode){alert("That's your own Player ID.");return}
+ try{
+  const tSnap=await getDoc(doc(db,"players",target));
+  if(!tSnap.exists()){alert("Player ID not found. Ask them to open the Online tab once so their ID registers.");return}
+  const tData=tSnap.data();
+  await addDoc(collection(db,"invites"),{type:"tournament",tournamentId:currentTournamentId,tournamentName:currentTournament?.name||"a tournament",seed,fromId:playerId,fromCode:myCode,fromName:myName,toId:tData.ownerId,toCode:target,toName:tData.name,status:"pending",createdAt:Date.now()});
+  alert("Invite sent to "+(tData.name||target)+" for Seed "+seed+".");
+ }catch(e){console.error(e);alert("Invite failed: "+(e.code||e.message))}
+}
+function renderRecruit(){
+ const t=currentTournament,isOrganizer=t.organizerId===playerId;
+ document.getElementById("recruitSeats").innerHTML=[0,1,2,3,4,5].map(i=>{
+  const seed=i+1,name=t.teams[i];
+  if(name)return `<div class="player"><span>Seed ${seed}</span><b>${name}${(t.teamIds&&t.teamIds[i]===playerId)?" (You)":""}</b></div>`;
+  return `<div class="player"><span>Seed ${seed}</span>${isOrganizer?`<button data-seed="${seed}" class="recruitInviteBtn primary" style="padding:8px 12px">+ Invite</button>`:'<b class="muted">Open seat</b>'}</div>`;
+ }).join("");
+ document.querySelectorAll(".recruitInviteBtn").forEach(btn=>{
+  btn.onclick=()=>{
+   const seed=parseInt(btn.getAttribute("data-seed"));
+   openActivePlayersModal(code=>sendTournamentInviteToCode(code,seed));
+  };
+ });
+}
+
+function teamName(seed){if(!seed)return"TBD";return currentTournament.teams[seed-1]||"TBD"}
 function renderBracket(){
  const t=currentTournament,b=t.bracket;
  document.getElementById("champBox").innerHTML=t.champion?`<div class="champ">🏆 Champion: ${teamName(t.champion)}</div>`:"";
  const order=[["qf1","Quarterfinal 1"],["qf2","Quarterfinal 2"],["sf1","Semifinal 1"],["sf2","Semifinal 2"],["final","Final"]];
  document.getElementById("bracketBox").innerHTML=order.map(([key,label])=>{
   const m=b[key];
-  const canPlay=m.aSeed&&m.bSeed&&m.status!=="done";
+  const canPlay=m.aSeed&&m.bSeed&&m.status!=="done"&&teamName(m.aSeed)!=="TBD"&&teamName(m.bSeed)!=="TBD";
   const aWin=m.winnerSeed===m.aSeed,bWin=m.winnerSeed===m.bSeed;
   return `<div class="bmatch"><div class="rd">${label}</div>
    <div class="bp2 ${aWin?"win":""}">${teamName(m.aSeed)}${aWin?" ✓":""}</div>
@@ -733,7 +880,7 @@ function renderBracket(){
 }
 
 const tournUI=makeBoardUI("board-tourn","status-tourn","moves-tourn",null,null);
-let T={board:null,turn:"w",selected:null,legal:[],flipped:false,hint:null,onClick:tournClick};
+let T={board:null,turn:"w",selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:tournClick};
 let tournRoomRef=null,tournRoomUnsub=null,tournRoom=null,tournMyColor=null,tournBusy=false,tournMatchKey=null;
 let tournTurnKey=null,tournAutoMoved=false;
 
@@ -775,7 +922,7 @@ function listenTournMatch(){
  if(tournRoomUnsub)tournRoomUnsub();
  tournRoomUnsub=onSnapshot(tournRoomRef,async s=>{
   if(!s.exists())return;
-  tournRoom=s.data();T.board=unflattenBoard(tournRoom.board);T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];
+  tournRoom=s.data();T.board=unflattenBoard(tournRoom.board);T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];T.lastMove=tournRoom.lastMove||T.lastMove;
   const turnKey=tournRoom.turn+"-"+(tournRoom.history?tournRoom.history.length:0);
   if(turnKey!==tournTurnKey){tournTurnKey=turnKey;tournAutoMoved=false}
   document.querySelector("#tourn-white b").textContent=(tournRoom.whiteName||"Waiting")+(tournMyColor==="w"?" (You)":"");
@@ -833,7 +980,7 @@ function tournClick(r,c){
 }
 function optimisticTournMove(m){
  const ap=applyMove(T.board,m,tournRoom.castling,tournRoom.ep);
- T.board=ap.nb;T.selected=null;T.legal=[];T.hint=null;
+ T.board=ap.nb;T.selected=null;T.legal=[];T.hint=null;T.lastMove=m;
  renderBoard(tournUI,T);
  say(tournUI.statusEl,"Opponent's turn","Move sent…");
  sendTournMove(m);
@@ -849,7 +996,7 @@ async function sendTournMove(m){
    const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
    let hist=[...(d.history||[]),note],next=opp(tournMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
    if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?tournMyColor:"draw"}
-   tx.update(tournRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,turnStartedAt:Date.now(),updatedAt:Date.now()});
+   tx.update(tournRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,lastMove:{fr:lm.fr,fc:lm.fc,tr:lm.tr,tc:lm.tc,captured:!!lm.captured},turnStartedAt:Date.now(),updatedAt:Date.now()});
   });
  }catch(e){console.error(e);alert(e.message)}finally{tournBusy=false}
 }
