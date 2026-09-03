@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Chess — Local, Online &amp; Tournament</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0d1321;color:#eef2f7;font-family:Inter,system-ui,Arial,sans-serif}
 .app{max-width:1180px;width:96%;margin:16px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
@@ -20,20 +23,21 @@ h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
 .sq.sel{box-shadow:inset 0 0 0 5px #facc15}.sq.check{background-image:linear-gradient(#ef4444aa,#ef4444aa)}.sq.hint{box-shadow:inset 0 0 0 4px #38bdf8}
 .sq.lastmove{background-image:linear-gradient(#facc1550,#facc1550)}
 .sq.move:after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;background:#22c55e88}.sq.capture:after{content:"";position:absolute;inset:7%;border:5px solid #22c55e88;border-radius:50%}
-.piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2;transition:transform .12s}
-.wp{color:#fdfdfd;text-shadow:0 1px 0 #fff8,0 3px 3px #0006,0 6px 8px #0007}
-.bp{color:#171717;text-shadow:0 1px 0 #fff5,0 2px 3px #0009}
-.sq.sel .piece{transform:scale(1.08)}
+.piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2;transition:transform .12s;will-change:transform}
+.wp{background:linear-gradient(180deg,#ffffff 0%,#f1f1ee 45%,#cfcbc0 75%,#a9a396 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 #ffffffcc) drop-shadow(0 3px 2px #0006) drop-shadow(0 7px 7px #0007)}
+.bp{background:linear-gradient(180deg,#5b5b5b 0%,#2c2c2c 45%,#0e0e0e 80%,#000 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 #ffffff33) drop-shadow(0 3px 3px #0008) drop-shadow(0 7px 6px #0009)}
+.sq.sel .piece{transform:scale(1.1)}
 .boardCard{perspective:1500px}
 .board{box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 18px 40px -12px #000a;border-radius:8px;transition:transform .35s ease;position:relative}
-.board.board3d{transform:rotateX(var(--tiltX,52deg)) rotateY(var(--tiltY,0deg)) scale(1.2);transform-origin:50% 78%;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 55px 70px -20px #000d}
+.board.board3d{transform:rotateX(var(--tiltX,52deg)) rotateY(var(--tiltY,0deg)) scale(1.16);transform-origin:50% 78%;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 45px 60px -18px #000d;transition:transform .5s cubic-bezier(.22,.7,.32,1)}
 .board.board3d::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 90% 60% at 50% 8%,#fff3,transparent 65%);pointer-events:none;z-index:1}
 .board.board3d .sq.light{background:linear-gradient(160deg,#f6e5c4,#e0bd8e)}
 .board.board3d .sq.dark{background:linear-gradient(160deg,#a06a42,#7c4f32)}
-.board.board3d .piece{text-shadow:0 12px 10px rgba(0,0,0,.6),0 2px 0 rgba(255,255,255,.25);transform:translateY(-8%);position:relative}
+.board.board3d .piece{filter:drop-shadow(0 1px 0 #ffffff33) drop-shadow(0 10px 8px rgba(0,0,0,.55));transform:translateY(-8%);position:relative}
 .board.board3d .piece:after{content:"";position:absolute;left:50%;bottom:-38%;width:70%;height:22%;background:radial-gradient(ellipse,rgba(0,0,0,.45),transparent 72%);transform:translateX(-50%);z-index:-1}
 .board.board3d .sq.sel .piece{transform:translateY(-16%) scale(1.1)}
 .board.board3d .sq:hover .piece{transform:translateY(-12%) scale(1.04)}
+.piece.sliding{transition:transform .32s cubic-bezier(.2,.7,.3,1)!important}
 .coord{position:absolute;font-size:10px;font-weight:700;opacity:.65}.rank{top:3px;left:4px}.file{bottom:3px;right:4px}.light .coord{color:#765536}.dark .coord{color:#f7dfb8}
 .panel{padding:17px}.status{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px;margin-bottom:12px}.status b{font-size:18px}.status div{color:#94a3b8;font-size:12px;margin-top:3px}
 select,button,input{font:inherit;border:0;border-radius:10px;padding:11px 12px}select,input{background:#0e1726;color:white;border:1px solid #35445b;width:100%}
@@ -59,6 +63,13 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 .grid.fs-active .boardCard{width:min(94vw,80vh,640px);flex:none}
 .grid.fs-active .panel{width:min(94vw,640px)}
 @media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.piece{font-size:clamp(29px,11vw,46px)}}
+.celebrate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#000a;padding:16px}
+.celebrate-card{background:linear-gradient(160deg,#1c2438,#0f1522);border:1px solid #3d4f70;border-radius:20px;padding:32px 36px;text-align:center;box-shadow:0 30px 80px #000a;max-width:340px;animation:popIn .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes popIn{from{transform:scale(.4) translateY(30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.celebrate-title{font-size:32px;font-weight:800;margin-bottom:8px}
+.celebrate-sub{font-size:16px;color:#facc15;font-weight:700;margin-bottom:18px}
+.confetti-piece{position:fixed;top:-24px;width:9px;height:15px;z-index:199;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(680deg);opacity:.15}}
 </style>
 </head>
 <body>
@@ -186,7 +197,7 @@ const firebaseConfig={
   messagingSenderId:"639996000069",
   appId:"1:639996000069:web:716d98a89d0fbb3e10702c"
 };
-let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction,collection,query,where,addDoc,deleteDoc,orderBy,limit;
+let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction,collection,query,where,addDoc,deleteDoc,orderBy,limit,getDocs,increment;
 let playerId=localStorage.getItem("chessPlayerId");
 if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
 let myCode=localStorage.getItem("chessMyCode");
@@ -205,7 +216,7 @@ function loadFirebase(){
    const app=appMod.initializeApp(firebaseConfig);
    db=fsMod.getFirestore(app);
    doc=fsMod.doc;getDoc=fsMod.getDoc;setDoc=fsMod.setDoc;updateDoc=fsMod.updateDoc;onSnapshot=fsMod.onSnapshot;runTransaction=fsMod.runTransaction;
-   collection=fsMod.collection;query=fsMod.query;where=fsMod.where;addDoc=fsMod.addDoc;deleteDoc=fsMod.deleteDoc;orderBy=fsMod.orderBy;limit=fsMod.limit;
+   collection=fsMod.collection;query=fsMod.query;where=fsMod.where;addDoc=fsMod.addDoc;deleteDoc=fsMod.deleteDoc;orderBy=fsMod.orderBy;limit=fsMod.limit;getDocs=fsMod.getDocs;increment=fsMod.increment;
    document.getElementById("net").textContent="Firebase: connected";
    registerPlayer();
    listenIncomingInvites();
@@ -220,7 +231,58 @@ function loadFirebase(){
  return firebaseLoadPromise;
 }
 async function registerPlayer(){
- try{await setDoc(doc(db,"players",myCode),{ownerId:playerId,name:myName,updatedAt:Date.now()})}catch(e){console.error(e)}
+ try{await setDoc(doc(db,"players",myCode),{ownerId:playerId,name:myName,updatedAt:Date.now()},{merge:true})}catch(e){console.error(e)}
+}
+/* Wrap a button's onclick so it visibly shows "Connecting…"/a busy state instead of silently hanging
+   while Firebase's SDK loads or a request is in flight (this used to look like a frozen 5-10s wait). */
+function withLoading(btn,busyLabel,fn){
+ const original=btn.textContent;
+ btn.onclick=async()=>{
+  if(btn.disabled)return;
+  btn.disabled=true;btn.textContent=busyLabel;
+  try{await fn()}finally{btn.disabled=false;btn.textContent=original}
+ };
+}
+
+/* ---- Victory celebration, win/loss stats, and live rank ---- */
+function launchConfetti(n){
+ const colors=["#f43f5e","#facc15","#22c55e","#38bdf8","#a78bfa","#fb923c"];
+ for(let i=0;i<n;i++){
+  const el=document.createElement("div");
+  el.className="confetti-piece";
+  el.style.left=Math.random()*100+"vw";
+  el.style.background=colors[Math.floor(Math.random()*colors.length)];
+  el.style.animationDuration=(2.2+Math.random()*1.6)+"s";
+  el.style.animationDelay=(Math.random()*0.6)+"s";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),4200);
+ }
+}
+function showCelebration(result,rank,total){
+ const wrap=document.createElement("div");wrap.className="celebrate";
+ let title,sub;
+ if(result==="win"){title="🏆 Victory!";sub=rank?("Your rank: #"+rank+(total?(" of "+total+" players"):"")):"Recording your rank…";launchConfetti(140)}
+ else if(result==="loss"){title="Good game!";sub="Better luck next time."}
+ else{title="🤝 Draw";sub="A hard-fought draw."}
+ wrap.innerHTML=`<div class="celebrate-card"><div class="celebrate-title">${title}</div><div class="celebrate-sub">${sub}</div><button class="celebrate-close primary">Continue</button></div>`;
+ document.body.appendChild(wrap);
+ wrap.querySelector(".celebrate-close").onclick=()=>wrap.remove();
+ wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
+ setTimeout(()=>{if(document.body.contains(wrap))wrap.remove()},10000);
+}
+async function recordGameResult(result){
+ try{
+  const field=result==="win"?"wins":result==="loss"?"losses":"draws";
+  await updateDoc(doc(db,"players",myCode),{[field]:increment(1)});
+  let rank=null,total=null;
+  if(result==="win"){
+   const snap=await getDocs(query(collection(db,"players"),orderBy("wins","desc"),limit(200)));
+   total=snap.size;
+   const idx=snap.docs.findIndex(d=>d.id===myCode);
+   rank=idx>=0?idx+1:null;
+  }
+  showCelebration(result,rank,total);
+ }catch(e){console.error(e);showCelebration(result,null,null)}
 }
 
 /* ============ CORE CHESS ENGINE (shared by all modes) ============ */
@@ -394,26 +456,34 @@ function setup3D(boardElId,btnId){
  const btn=document.getElementById(btnId),boardEl=document.getElementById(boardElId);
  if(!btn||!boardEl)return;
  const key="chess3D-"+boardElId;
+ let curX=52,curY=0,targX=52,targY=0,rafId=null;
+ function tick(){
+  curX+=(targX-curX)*0.08;curY+=(targY-curY)*0.08;
+  boardEl.style.setProperty("--tiltX",curX.toFixed(2)+"deg");
+  boardEl.style.setProperty("--tiltY",curY.toFixed(2)+"deg");
+  if(Math.abs(targX-curX)>0.05||Math.abs(targY-curY)>0.05)rafId=requestAnimationFrame(tick);
+  else rafId=null;
+ }
+ function kick(){if(!rafId)rafId=requestAnimationFrame(tick)}
  if(localStorage.getItem(key)==="1"){boardEl.classList.add("board3d");btn.textContent="🧊 2D View"}
  btn.onclick=()=>{
   const on=boardEl.classList.toggle("board3d");
   btn.textContent=on?"🧊 2D View":"🧊 3D View";
   localStorage.setItem(key,on?"1":"0");
-  if(!on){boardEl.style.removeProperty("--tiltX");boardEl.style.removeProperty("--tiltY")}
+  if(!on){targX=52;targY=0;curX=52;curY=0;boardEl.style.removeProperty("--tiltX");boardEl.style.removeProperty("--tiltY")}
  };
- // Mouse/touch parallax: subtly steer the tilt toward the pointer so the board feels alive in 3D mode.
+ // Gentle, damped parallax — small tilt range and eased toward the pointer so the board stays calm and stable.
  const boardCard=boardEl.closest(".boardCard");
  function steer(clientX,clientY){
   if(!boardEl.classList.contains("board3d"))return;
   const rect=boardCard.getBoundingClientRect();
-  const px=(clientX-rect.left)/rect.width,py=(clientY-rect.top)/rect.height;
-  const tiltX=44+(1-py)*16,tiltY=(px-0.5)*22;
-  boardEl.style.setProperty("--tiltX",tiltX.toFixed(1)+"deg");
-  boardEl.style.setProperty("--tiltY",tiltY.toFixed(1)+"deg");
+  const px=Math.min(1,Math.max(0,(clientX-rect.left)/rect.width)),py=Math.min(1,Math.max(0,(clientY-rect.top)/rect.height));
+  targX=50+(0.5-py)*8;targY=(px-0.5)*10;
+  kick();
  }
  if(boardCard){
   boardCard.addEventListener("mousemove",e=>steer(e.clientX,e.clientY));
-  boardCard.addEventListener("mouseleave",()=>{boardEl.style.setProperty("--tiltX","52deg");boardEl.style.setProperty("--tiltY","0deg")});
+  boardCard.addEventListener("mouseleave",()=>{targX=52;targY=0;kick()});
   boardCard.addEventListener("touchmove",e=>{if(e.touches[0])steer(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
  }
 }
@@ -430,8 +500,13 @@ function makeBoardUI(elId,statusId,movesId,capWId,capBId){
 }
 function say(statusEl,a,b){if(statusEl)statusEl.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
 function renderBoard(ui,state){
- const el=ui.el;el.innerHTML="";if(!state.board)return;
+ const el=ui.el;if(!state.board)return;
  const rs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7],cs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
+ const riOf=[],ciOf=[];for(let i=0;i<8;i++){riOf[rs[i]]=i;ciOf[cs[i]]=i}
+ const mvKey=state.lastMove?state.lastMove.fr+","+state.lastMove.fc+","+state.lastMove.tr+","+state.lastMove.tc+","+(state.history?state.history.length:0):null;
+ const isNewMove=state.lastMove&&mvKey!==ui._lastKey&&ui._lastKey!==undefined;
+ el.innerHTML="";
+ let movedPieceEl=null;
  for(let ri=0;ri<8;ri++)for(let ci=0;ci<8;ci++){
   let r=rs[ri],c=cs[ci],s=document.createElement("div");
   s.className="sq "+((r+c)%2?"dark":"light");
@@ -440,11 +515,30 @@ function renderBoard(ui,state){
   let k=king(state.board,state.turn);if(k&&k[0]===r&&k[1]===c&&inCheck(state.board,state.turn))s.classList.add("check");
   if(state.hint&&((state.hint.fr===r&&state.hint.fc===c)||(state.hint.tr===r&&state.hint.tc===c)))s.classList.add("hint");
   if(state.lastMove&&((state.lastMove.fr===r&&state.lastMove.fc===c)||(state.lastMove.tr===r&&state.lastMove.tc===c)))s.classList.add("lastmove");
-  if(state.board[r][c]){let z=document.createElement("span");z.className="piece "+(pcolor(state.board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[state.board[r][c]];s.appendChild(z)}
+  if(state.board[r][c]){
+   let z=document.createElement("span");z.className="piece "+(pcolor(state.board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[state.board[r][c]];s.appendChild(z);
+   if(isNewMove&&state.lastMove.tr===r&&state.lastMove.tc===c)movedPieceEl=z;
+  }
   if(ci===0){let z=document.createElement("span");z.className="coord rank";z.textContent=8-r;s.appendChild(z)}
   if(ri===7){let z=document.createElement("span");z.className="coord file";z.textContent=FILES[c];s.appendChild(z)}
   s.onclick=()=>state.onClick(r,c);
   el.appendChild(s)
+ }
+ // Real sliding animation: place the piece that just moved back at its origin square (no transition),
+ // then release it to its true square on the next frame so it visibly glides across the board.
+ if(movedPieceEl&&el.clientWidth>0){
+  const cell=el.clientWidth/8,cellH=el.clientHeight/8;
+  const dx=(ciOf[state.lastMove.fc]-ciOf[state.lastMove.tc])*cell;
+  const dy=(riOf[state.lastMove.fr]-riOf[state.lastMove.tr])*cellH;
+  movedPieceEl.style.transition="none";
+  movedPieceEl.style.transform="translate("+dx+"px,"+dy+"px)";
+  requestAnimationFrame(()=>{
+   requestAnimationFrame(()=>{
+    movedPieceEl.classList.add("sliding");
+    movedPieceEl.style.transform="";
+    setTimeout(()=>{movedPieceEl.classList.remove("sliding");movedPieceEl.style.transition=""},340);
+   });
+  });
  }
  if(ui.movesEl){
   ui.movesEl.innerHTML=(state.history||[]).map((x,i)=>i%2===0?`<div class="row"><span>${i/2+1}.</span><span>${x}</span><span>${state.history[i+1]||""}</span></div>`:"").join("");
@@ -452,12 +546,12 @@ function renderBoard(ui,state){
  }
  if(ui.capWEl)ui.capWEl.innerHTML=(state.captured?.b||[]).map(p=>PIECES[p]).join(" ");
  if(ui.capBEl)ui.capBEl.innerHTML=(state.captured?.w||[]).map(p=>PIECES[p]).join(" ");
- if(state.lastMove){
-  const mvKey=state.lastMove.fr+","+state.lastMove.fc+","+state.lastMove.tr+","+state.lastMove.tc+","+(state.history?state.history.length:0);
-  if(ui._lastKey!==mvKey)playMoveSound(!!state.lastMove.captured,king(state.board,state.turn)&&inCheck(state.board,state.turn));
+ if(mvKey!==null){
+  if(isNewMove)playMoveSound(!!state.lastMove.captured,king(state.board,state.turn)&&inCheck(state.board,state.turn));
   ui._lastKey=mvKey;
  }
 }
+
 
 /* ============ QUICK PLAY (LOCAL) ============ */
 const localUI=makeBoardUI("board-local","status-local","moves-local","capWhite-local","capBlack-local");
@@ -522,7 +616,7 @@ const ONLINE_SECONDS=30;
 const onlineUI=makeBoardUI("board-online","status-online","moves-online",null,null);
 let O={board:null,turn:"w",castling:null,ep:null,history:[],selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:onlineClick};
 let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false;
-let onlineTurnKey=null,onlineAutoMoved=false,myInviteUnsub=null,incomingUnsub=null;
+let onlineTurnKey=null,onlineAutoMoved=false,myInviteUnsub=null,incomingUnsub=null,onlineResultHandled=false;
 function onlineClick(r,c){
  if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor||onlineBusy)return;
  O.hint=null;
@@ -557,15 +651,15 @@ async function sendOnlineMove(m){
 }
 function code(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
 function configReady(){return firebaseConfig.apiKey!=="YOUR_API_KEY"}
-document.getElementById("createRoom").onclick=async()=>{
+withLoading(document.getElementById("createRoom"),"Connecting…",async()=>{
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=code();onlineRoomRef=doc(db,"chessRooms",id);
   const init={board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:myName,blackId:null,blackName:null,status:"waiting",winner:null,turnStartedAt:Date.now(),updatedAt:Date.now()};
   await setDoc(onlineRoomRef,init);document.getElementById("roomCode").value=id;onlineMyColor="w";listenOnline(id)
  }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write in the Firebase console.")}
-};
-document.getElementById("joinRoom").onclick=async()=>{
+});
+withLoading(document.getElementById("joinRoom"),"Connecting…",async()=>{
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
@@ -574,10 +668,11 @@ document.getElementById("joinRoom").onclick=async()=>{
   if(d.whiteId===playerId)onlineMyColor="w";else{await updateDoc(onlineRoomRef,{blackId:playerId,blackName:myName,status:"playing",turnStartedAt:Date.now(),updatedAt:Date.now()});onlineMyColor="b"}
   listenOnline(id)
  }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Join room failed: "+(e.code||e.message))}
-};
+});
 function listenOnline(id){
  if(onlineUnsub)onlineUnsub();document.getElementById("roomCode").value=id;
  localStorage.setItem("chessLastRoom",id);checkRejoinAvailable();
+ onlineResultHandled=false;
  onlineUnsub=onSnapshot(onlineRoomRef,s=>{
   if(!s.exists()){say(onlineUI.statusEl,"Room closed","");return}
   onlineRoom=s.data();O.board=unflattenBoard(onlineRoom.board);O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];O.lastMove=onlineRoom.lastMove||O.lastMove;
@@ -585,7 +680,13 @@ function listenOnline(id){
   if(turnKey!==onlineTurnKey){onlineTurnKey=turnKey;onlineAutoMoved=false}
   document.querySelector("#online-white b").textContent=(onlineRoom.whiteName||"Waiting")+(onlineMyColor==="w"?" (You)":"");
   document.querySelector("#online-black b").textContent=(onlineRoom.blackName||"Waiting")+(onlineMyColor==="b"?" (You)":"");
-  if(onlineRoom.winner){say(onlineUI.statusEl,onlineRoom.winner==="draw"?"Draw":onlineRoom.winner==="w"?"White wins":"Black wins","Game over")}
+  if(onlineRoom.winner){
+   say(onlineUI.statusEl,onlineRoom.winner==="draw"?"Draw":onlineRoom.winner==="w"?"White wins":"Black wins","Game over");
+   if(!onlineResultHandled&&onlineMyColor){
+    onlineResultHandled=true;
+    recordGameResult(onlineRoom.winner==="draw"?"draw":(onlineRoom.winner===onlineMyColor?"win":"loss"));
+   }
+  }
   else if(onlineRoom.status==="waiting")say(onlineUI.statusEl,"Waiting for opponent","Send your Player ID or room code: "+id);
   else say(onlineUI.statusEl,onlineRoom.turn===onlineMyColor?"Your turn":"Opponent's turn",onlineRoom.turn==="w"?"White to move":"Black to move");
   renderBoard(onlineUI,O);
@@ -652,11 +753,11 @@ document.getElementById("myNameInput").onchange=async(e)=>{
  myName=e.target.value.trim()||myName;localStorage.setItem("chessMyName",myName);
  if(db)await registerPlayer();
 };
-document.getElementById("sendInvite").onclick=async()=>{
+withLoading(document.getElementById("sendInvite"),"Sending…",async()=>{
  const target=document.getElementById("friendCode").value.trim().toUpperCase();
  if(target.length!==6){alert("Enter a 6-character Player ID.");return}
  await sendInviteToCode(target);
-};
+});
 async function sendInviteToCode(target){
  if(target===myCode){alert("That's your own Player ID.");return}
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
@@ -781,7 +882,7 @@ function initialBracket(){
 function tid(){let s="";for(let i=0;i<5;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
 let currentTournament=null,currentTournamentId=null,tournUnsub=null;
 
-document.getElementById("createTourn").onclick=async()=>{
+withLoading(document.getElementById("createTourn"),"Connecting…",async()=>{
  let names=[1,2,3,4,5,6].map(i=>document.getElementById("t"+i).value.trim());
  if(names.some(n=>!n)){alert("Enter all 6 player names.");return}
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
@@ -791,8 +892,8 @@ document.getElementById("createTourn").onclick=async()=>{
   await setDoc(ref,data);
   openTournament(id);
  }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
-};
-document.getElementById("buildViaInvites").onclick=async()=>{
+});
+withLoading(document.getElementById("buildViaInvites"),"Connecting…",async()=>{
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  try{
   const id=tid();const ref=doc(db,"tournaments",id);
@@ -800,13 +901,13 @@ document.getElementById("buildViaInvites").onclick=async()=>{
   await setDoc(ref,data);
   openTournament(id);
  }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
-};
-document.getElementById("loadTourn").onclick=async()=>{
+});
+withLoading(document.getElementById("loadTourn"),"Connecting…",async()=>{
  let id=document.getElementById("tid").value.trim().toUpperCase();
  if(!id){alert("Enter a Tournament ID.");return}
  if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
  openTournament(id);
-};
+});
 function openTournament(id){
  currentTournamentId=id;
  localStorage.setItem("chessLastTournId",id);checkRejoinAvailable();
@@ -882,7 +983,7 @@ function renderBracket(){
 const tournUI=makeBoardUI("board-tourn","status-tourn","moves-tourn",null,null);
 let T={board:null,turn:"w",selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:tournClick};
 let tournRoomRef=null,tournRoomUnsub=null,tournRoom=null,tournMyColor=null,tournBusy=false,tournMatchKey=null;
-let tournTurnKey=null,tournAutoMoved=false;
+let tournTurnKey=null,tournAutoMoved=false,tournResultHandled=false;
 
 async function openMatch(matchKey){
  tournMatchKey=matchKey;
@@ -920,6 +1021,7 @@ async function openMatch(matchKey){
 }
 function listenTournMatch(){
  if(tournRoomUnsub)tournRoomUnsub();
+ tournResultHandled=false;
  tournRoomUnsub=onSnapshot(tournRoomRef,async s=>{
   if(!s.exists())return;
   tournRoom=s.data();T.board=unflattenBoard(tournRoom.board);T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];T.lastMove=tournRoom.lastMove||T.lastMove;
@@ -930,6 +1032,10 @@ function listenTournMatch(){
   if(tournRoom.winner){
    say(tournUI.statusEl,tournRoom.winner==="draw"?"Draw":(tournRoom.winner==="w"?tournRoom.whiteName:tournRoom.blackName)+" wins","Game over");
    await recordMatchResult(tournRoom.winner);
+   if(!tournResultHandled&&tournMyColor){
+    tournResultHandled=true;
+    recordGameResult(tournRoom.winner==="draw"?"draw":(tournRoom.winner===tournMyColor?"win":"loss"));
+   }
   }else if(tournRoom.status==="waiting")say(tournUI.statusEl,"Waiting for opponent","");
   else say(tournUI.statusEl,tournRoom.turn===tournMyColor?"Your turn":(tournMyColor?"Opponent's turn":"Spectating"),tournRoom.turn==="w"?"White to move":"Black to move");
   renderBoard(tournUI,T);
