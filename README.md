@@ -70,11 +70,31 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 .celebrate-sub{font-size:16px;color:#facc15;font-weight:700;margin-bottom:18px}
 .confetti-piece{position:fixed;top:-24px;width:9px;height:15px;z-index:199;pointer-events:none;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(112vh) rotate(680deg);opacity:.15}}
+.hub{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;text-align:center}
+.hub h1{font-size:38px;margin:0}
+.hub .sub{color:#93a4bd}
+.hub-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.hub-card{width:220px;padding:28px 20px;border-radius:20px;cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid #2c3a50}
+.hub-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px #0007}
+.hub-card .emoji{font-size:52px;margin-bottom:10px}
+.hub-card .name{font-size:20px;font-weight:800;margin-bottom:4px}
+.hub-card .desc{font-size:13px;color:#93a4bd}
+.hub-card.chess{background:linear-gradient(160deg,#182235,#0f1522)}
+.hub-card.ludo{background:linear-gradient(160deg,#2a1e35,#1a1120)}
 </style>
 </head>
 <body>
+<div id="hub" class="hub">
+<h1>🎮 Game Center</h1>
+<div class="sub">Choose a game to play — locally or online with friends.</div>
+<div class="hub-cards">
+<div class="hub-card chess" id="hubChess"><div class="emoji">♟</div><div class="name">Play Chess</div><div class="desc">Local · Online 1v1 · 6-Player Tournament</div></div>
+<div class="hub-card ludo" id="hubLudo"><div class="emoji">🎲</div><div class="name">Play Ludo</div><div class="desc">Local · Online 2-4 Players</div></div>
+</div>
+</div>
+<div id="chessApp" class="hidden">
 <div class="app">
-<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div style="display:flex;align-items:center;gap:12px"><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
+<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div style="display:flex;align-items:center;gap:12px"><button id="hubBackBtn" style="padding:8px 12px">🏠 Menu</button><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
 <div class="nav">
 <button id="navLocal" class="active">Quick Play</button>
 <button id="navOnline">Online 1v1</button>
@@ -177,6 +197,8 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 </div>
 </div>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -694,13 +716,8 @@ function listenOnline(id){
  },e=>{say(onlineUI.statusEl,"Firebase error",e.message)});
 }
 function updateOnlineTimerDisplay(){
- const el=document.getElementById("timer-online");if(!el)return;
- if(!onlineRoom||onlineRoom.winner||onlineRoom.status!=="playing"){el.textContent="";return}
- const elapsed=Math.floor((Date.now()-(onlineRoom.turnStartedAt||Date.now()))/1000);
- const left=Math.max(0,ONLINE_SECONDS-elapsed);
- const whoseTurn=onlineRoom.turn===onlineMyColor?"Your":(onlineRoom.turn==="w"?"White's":"Black's");
- el.textContent="⏱ "+whoseTurn+" time: "+left+"s";
- if(left<=0&&onlineRoom.turn===onlineMyColor&&!onlineAutoMoved&&!onlineBusy){onlineAutoMoved=true;autoPlayOnline()}
+ // Time limit disabled — players can take as long as they like.
+ const el=document.getElementById("timer-online");if(el)el.textContent="";
 }
 async function autoPlayOnline(){
  let m=bestMove(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep,1);
@@ -1043,13 +1060,8 @@ function listenTournMatch(){
  });
 }
 function updateTournTimerDisplay(){
- const el=document.getElementById("timer-tourn");if(!el)return;
- if(!tournRoom||tournRoom.winner||tournRoom.status!=="playing"){el.textContent="";return}
- const elapsed=Math.floor((Date.now()-(tournRoom.turnStartedAt||Date.now()))/1000);
- const left=Math.max(0,ONLINE_SECONDS-elapsed);
- const whoseTurn=tournRoom.turn===tournMyColor?"Your":(tournRoom.turn==="w"?"White's":"Black's");
- el.textContent="⏱ "+whoseTurn+" time: "+left+"s";
- if(left<=0&&tournMyColor&&tournRoom.turn===tournMyColor&&!tournAutoMoved&&!tournBusy){tournAutoMoved=true;autoPlayTourn()}
+ // Time limit disabled — players can take as long as they like.
+ const el=document.getElementById("timer-tourn");if(el)el.textContent="";
 }
 async function autoPlayTourn(){
  let m=bestMove(T.board,tournMyColor,tournRoom.castling,tournRoom.ep,1);
@@ -1157,6 +1169,15 @@ document.getElementById("navOnline").onclick=()=>showScreen("Online");
 document.getElementById("navTourn").onclick=()=>showScreen("Tourn");
 
 /* ============ INIT ============ */
+document.getElementById("hubChess").onclick=()=>{
+ document.getElementById("hub").classList.add("hidden");
+ document.getElementById("chessApp").classList.remove("hidden");
+};
+document.getElementById("hubLudo").onclick=()=>{window.location.href="ludo.html"};
+document.getElementById("hubBackBtn").onclick=()=>{
+ document.getElementById("chessApp").classList.add("hidden");
+ document.getElementById("hub").classList.remove("hidden");
+};
 newLocalGame();
 document.getElementById("net").textContent="Firebase: not connected yet";
 loadFirebase(); // background load; Quick Play never waits on this
