@@ -203,6 +203,852 @@ button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hove
 
 </div>
 
+<div id="ludoApp" class="hidden" style="position:fixed;inset:0;z-index:40;background:#0d1321">
+<iframe id="ludoFrame" style="width:100%;height:100%;border:0;display:block"></iframe>
+</div>
+
+<script type="text/plain" id="ludoSource">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ludo — Local &amp; Online</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1321;color:#eef2f7;font-family:Inter,system-ui,Arial,sans-serif}
+.app{max-width:1180px;width:96%;margin:16px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
+.nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.nav button{background:#182235;border:1px solid #2c3a50;color:#94a3b8;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:650}
+.nav button.active{background:#22c55e;color:#05220e;border-color:#22c55e}
+.screen{display:none}.screen.active{display:block}
+.grid{display:grid;grid-template-columns:minmax(320px,760px) 340px;gap:18px}
+.card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}
+.boardCard{padding:12px;position:relative}
+.panel{padding:16px}
+.title{font-weight:750;margin:14px 0 8px}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #2c3a50;background:#0f1626;color:#eef2f7;font-size:15px;margin-bottom:8px}
+button{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer;background:#243349;color:#eef2f7}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:#22c55e;color:#05220e}
+.buttons{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.buttons button{flex:1}
+.room{display:flex;gap:8px;margin-bottom:10px}.room input{margin-bottom:0}
+.status{background:#0f1626;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.status b{font-size:16px}.status div{color:#94a3b8;font-size:13px;margin-top:2px}
+.hidden{display:none!important}
+.player{display:flex;justify-content:space-between;align-items:center;background:#0f1626;border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.seat-red{border-left:4px solid #ef4444}.seat-green{border-left:4px solid #22c55e}.seat-yellow{border-left:4px solid #facc15}.seat-blue{border-left:4px solid #38bdf8}
+
+.lboard{display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 18px 40px -12px #000a;background:#0f1626;position:relative}
+.lcell{position:relative;display:flex;align-items:center;justify-content:center}
+.lcell{box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.lhome-red{background:#e53935}.lhome-green{background:#43a047}.lhome-yellow{background:#fdd835}.lhome-blue{background:#1e88e5}
+.lhome-in{background:#fff!important;box-shadow:none}
+.nest-slot{width:80%;height:80%;border-radius:50%;box-shadow:inset 0 3px 7px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.7)}
+.nest-red{background:radial-gradient(circle at 40% 35%,#ef5350,#b71c1c)}.nest-green{background:radial-gradient(circle at 40% 35%,#66bb6a,#1b5e20)}
+.nest-yellow{background:radial-gradient(circle at 40% 35%,#ffee58,#c79100)}.nest-blue{background:radial-gradient(circle at 40% 35%,#42a5f5,#0d47a1)}
+.lpath{background:#fbf8f0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.lpath.lsafe{box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.lpath.lsafe:after{content:"★";position:absolute;color:#fff;font-size:clamp(10px,2.4vw,20px);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.lstart-red{background:#e53935!important}.lstart-green{background:#43a047!important}.lstart-yellow{background:#fdd835!important}.lstart-blue{background:#1e88e5!important}
+.lstretch-red{background:#e53935;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}.lstretch-green{background:#43a047;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.lstretch-yellow{background:#fdd835;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}.lstretch-blue{background:#1e88e5;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.lfinish{background:conic-gradient(from -45deg,#43a047 0 25%,#fdd835 25% 50%,#1e88e5 50% 75%,#e53935 75% 100%);display:flex;align-items:center;justify-content:center;font-size:clamp(12px,2.6vw,26px);box-shadow:inset 0 0 0 2px rgba(0,0,0,.4),0 0 10px rgba(0,0,0,.4)}
+.ltoken{position:absolute;width:86%;height:108%;bottom:3%;cursor:pointer;z-index:3;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));transition:filter .15s}
+.ltoken svg{display:block;overflow:visible}
+.ltoken.movable{animation:pawnHop .65s ease-in-out infinite;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 3px #fff);z-index:12}
+@keyframes pawnHop{0%,100%{transform:translateY(0)}50%{transform:translateY(-16%)}}
+.diceWrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin:12px 0 18px}
+.diceOverlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle,#000000a0,#000000e6);z-index:300;pointer-events:none}
+.diceCap{font-size:30px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
+.pawnIco{display:inline-block;vertical-align:middle;flex:none}
+.tallyItem{display:inline-flex;align-items:center;gap:6px;background:#0f1626;border-radius:10px;padding:6px 12px;margin:0 6px 6px 0;font-size:15px}
+.cubeWrap{width:var(--s,90px);height:var(--s,90px);perspective:calc(var(--s,90px)*5);margin:calc(var(--s,90px)*.08)}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;filter:drop-shadow(0 12px 10px rgba(0,0,0,.5))}
+.face{position:absolute;width:100%;height:100%;background:linear-gradient(145deg,#ffffff,#e2e2e2);border-radius:18%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14%;box-shadow:inset 0 0 0 1px #cfcfcf,inset 0 -4px 8px rgba(0,0,0,.12);backface-visibility:hidden}
+.face i{display:block;margin:12%}
+.face i.d{background:radial-gradient(circle at 35% 30%,#555,#111);border-radius:50%}
+.face i.d1{background:radial-gradient(circle at 35% 30%,#ff6b81,#c2002f);border-radius:50%}
+.f1{transform:translateZ(calc(var(--s,90px)/2))}
+.f2{transform:rotateY(90deg) translateZ(calc(var(--s,90px)/2))}
+.f3{transform:rotateX(90deg) translateZ(calc(var(--s,90px)/2))}
+.f4{transform:rotateX(-90deg) translateZ(calc(var(--s,90px)/2))}
+.f5{transform:rotateY(-90deg) translateZ(calc(var(--s,90px)/2))}
+.f6{transform:rotateY(180deg) translateZ(calc(var(--s,90px)/2))}
+.diceClick{cursor:pointer}
+button{font-size:16px}
+h1{font-size:34px!important}
+.top button{font-size:24px;padding:8px 14px}
+.nav button{font-size:18px;padding:12px 20px}
+.buttons button{font-size:16px;padding:14px 10px}
+#rollLocal,#rollOnline{font-size:22px;padding:15px 20px;width:230px!important}
+.finishTally{font-size:16px}
+@media(max-width:920px){.grid{grid-template-columns:1fr}}
+.turnBadge{display:inline-block;padding:6px 14px;border-radius:20px;font-weight:800;font-size:14px}
+.log{max-height:140px;overflow-y:auto;font-size:12.5px;color:#94a3b8;background:#0f1626;border-radius:10px;padding:8px 10px}
+.log div{margin-bottom:3px}
+.finishTally{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.finishTally span{font-size:18px}
+
+.grid.fs-active{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;background:#0d1321;width:100vw;height:100vh;overflow:auto;padding:16px;box-sizing:border-box;gap:16px}
+.grid.fs-active .boardCard{width:min(94vw,80vh,640px);flex:none}
+.grid.fs-active .panel{width:min(94vw,640px)}
+@media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.lfinish{font-size:16px}}
+
+.celebrate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#000a;padding:16px}
+.celebrate-card{background:linear-gradient(160deg,#1c2438,#0f1522);border:1px solid #3d4f70;border-radius:20px;padding:32px 36px;text-align:center;box-shadow:0 30px 80px #000a;max-width:340px;animation:popIn .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes popIn{from{transform:scale(.4) translateY(30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.celebrate-title{font-size:30px;font-weight:800;margin-bottom:8px}
+.celebrate-sub{font-size:15px;color:#facc15;font-weight:700;margin-bottom:18px}
+.confetti-piece{position:fixed;top:-24px;width:9px;height:15px;z-index:199;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(680deg);opacity:.15}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><div><h1>🎲 Ludo</h1><div class="muted">Local · Online 2-4 Players</div></div><div style="display:flex;align-items:center;gap:12px"><a href="chess_tournament.html" id="ludoMenuLink" style="text-decoration:none" onclick="if(window.parent&&window.parent!==window){window.parent.postMessage('ludoGoHome','*');return false}"><button style="padding:8px 12px">🏠 Menu</button></a><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
+<div class="nav">
+<button id="navLocal" class="active">🎮 Local</button>
+<button id="navOnline">🌐 Online</button>
+</div>
+
+<!-- LOCAL SCREEN -->
+<div id="scrLocal" class="screen active">
+<div class="grid">
+<div class="card boardCard"><div id="board-local" class="lboard"></div><div id="diceOverlay-local" class="diceOverlay hidden"><div id="diceBig-local"></div><div id="diceCap-local" class="diceCap"></div></div></div>
+<div class="card panel">
+<div id="status-local" class="status"><b>Ready to play</b><div>Choose player count and start a new game.</div></div>
+<div class="title" style="margin-top:0">🎮 Players</div>
+<div class="buttons"><button id="local2p" class="primary">👥 2 Players</button><button id="local4p" class="primary">👥 4 Players</button></div>
+<div class="buttons"><button id="local2bot" class="primary">🤖 vs Computer</button><button id="local4bot" class="primary">🤖 vs 3 Computers</button></div>
+<button id="newLudoLocal" style="width:100%;margin-bottom:12px">🔄 New Game</button>
+<div class="diceWrap">
+<div id="dice-local" class="dice"></div>
+<button id="rollLocal" class="primary">🎲 Roll Dice</button>
+</div>
+<div class="title">📊 Progress</div>
+<div id="tally-local" class="finishTally"></div>
+<div class="buttons" style="margin-top:12px"><button id="fullscreen-local">⛶ Full Screen</button></div>
+<div class="title">📜 Game Log</div><div id="log-local" class="log"></div>
+</div>
+</div>
+</div>
+
+<!-- ONLINE SCREEN -->
+<div id="scrOnline" class="screen">
+<div class="grid">
+<div class="card boardCard"><div id="board-online" class="lboard"></div><div id="diceOverlay-online" class="diceOverlay hidden"><div id="diceBig-online"></div><div id="diceCap-online" class="diceCap"></div></div></div>
+<div class="card panel">
+<div id="status-online" class="status"><b>Not connected</b><div>Create or join a room.</div></div>
+<div id="timer-online" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
+<div id="rejoinBanner-online" class="hidden" style="background:#0e1726;border:1px solid #22c55e55;border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="muted">You have a game in progress</span><button id="rejoinBtn-online" class="primary" style="padding:8px 12px">Rejoin</button></div>
+<div id="inviteBanner-online" class="hidden" style="background:#0e1726;border:1px solid #facc1555;border-radius:12px;padding:10px 12px;margin-bottom:10px"></div>
+<div class="title" style="margin-top:0">🆔 Your Player ID</div>
+<div class="room"><input id="myCodeShow" readonly><button id="copyMyCode">📋 Copy</button></div>
+<input id="myNameInput" placeholder="Your display name">
+<button id="showActiveBtn" style="width:100%;margin-bottom:10px">👥 See Active Players</button>
+<div class="title">🏠 Create a Room</div>
+<div class="buttons"><button id="createRoom2p" class="primary">👥 2-Player Room</button><button id="createRoom4p" class="primary">👥 4-Player Room</button></div>
+<div class="title">🔑 Join a Room</div>
+<div class="room"><input id="roomCode" maxlength="6" placeholder="ROOM CODE"><button id="joinRoom">🔑 Join</button></div>
+<div id="seatsBox" class="players"></div>
+<div class="diceWrap">
+<div id="dice-online" class="dice"></div>
+<button id="rollOnline" class="primary">🎲 Roll Dice</button>
+</div>
+<div class="title">📊 Progress</div>
+<div id="tally-online" class="finishTally"></div>
+<div class="buttons" style="margin-top:12px"><button id="fullscreen-online">⛶ Full Screen</button><button id="resignOnline">🚪 Leave / Resign</button></div>
+<div class="title">📜 Game Log</div><div id="log-online" class="log"></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div id="activeModal" class="hidden" style="position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px">
+ <div class="card panel" style="max-width:440px;width:100%;max-height:75vh;overflow:auto">
+  <div class="top" style="margin-bottom:10px"><b style="font-size:18px">👥 Active Players</b><button id="closeActiveModal">✕</button></div>
+  <div id="activeList" class="muted">Loading…</div>
+ </div>
+</div>
+
+<script type="module">
+const firebaseConfig={
+  apiKey:"AIzaSyBPwEOdI8WwPKZVCJhvyANp5MPQKmAG79w",
+  authDomain:"chess-dab2c.firebaseapp.com",
+  projectId:"chess-dab2c",
+  storageBucket:"chess-dab2c.firebasestorage.app",
+  messagingSenderId:"639996000069",
+  appId:"1:639996000069:web:716d98a89d0fbb3e10702c"
+};
+
+/* ============ BOARD TOPOLOGY (verified, see gen_ludo_board2.py) ============ */
+const RING=[[6,1],[6,2],[6,3],[6,4],[6,5],[6,6],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[8,8],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const STARTS={red:0,green:14,yellow:28,blue:42};
+const HOMECOLS={red:[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],green:[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],yellow:[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],blue:[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]]};
+const NESTS={red:[[1,1],[1,4],[4,1],[4,4]],green:[[1,10],[1,13],[4,10],[4,13]],yellow:[[10,10],[10,13],[13,10],[13,13]],blue:[[10,1],[10,4],[13,1],[13,4]]};
+const FINISH=[7,7];
+const COLORS=["red","green","yellow","blue"];
+const COLOR_HEX={red:"#ef4444",green:"#22c55e",yellow:"#facc15",blue:"#38bdf8"};
+const RING_SET=new Set(RING.map(p=>p[0]+","+p[1]));
+const SAFE_SET=new Set(Object.values(STARTS).map(i=>RING[i][0]+","+RING[i][1]));
+const STRETCH_MAP={};for(const c of COLORS)for(const p of HOMECOLS[c])STRETCH_MAP[p[0]+","+p[1]]=c;
+function homeBaseOwner(r,c){if(r<=5&&c<=5)return"red";if(r<=5&&c>=9)return"green";if(r>=9&&c>=9)return"yellow";if(r>=9&&c<=5)return"blue";return null}
+// Local path per color: 55 ring cells (their own rotation) + 6 home-stretch cells = 61 cells (index 0-60). Reaching index 61 = finished.
+const LOCALPATH={};
+for(const c of COLORS){
+ const s=STARTS[c],arr=[];
+ for(let i=0;i<55;i++)arr.push(RING[(s+i)%56]);
+ for(const p of HOMECOLS[c])arr.push(p);
+ LOCALPATH[c]=arr;
+}
+function cellOf(color,pos){return LOCALPATH[color][pos]}
+
+/* ============ Firebase (loaded lazily; identity shared with the Chess app) ============ */
+let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction,collection,query,where,addDoc,orderBy,limit;
+let playerId=localStorage.getItem("chessPlayerId");
+if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
+let myCode=localStorage.getItem("chessMyCode");
+if(!myCode){myCode=code6();localStorage.setItem("chessMyCode",myCode)}
+let myName=localStorage.getItem("chessMyName")||("Player-"+myCode.slice(0,3));
+let heartbeatInterval=null;
+function code6(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+
+let firebaseLoadPromise=null;
+function loadFirebase(){
+ if(firebaseLoadPromise)return firebaseLoadPromise;
+ firebaseLoadPromise=(async()=>{
+  try{
+   document.getElementById("net").textContent="Firebase: connecting…";
+   const appMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js");
+   const fsMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js");
+   const app=appMod.initializeApp(firebaseConfig);
+   db=fsMod.getFirestore(app);
+   doc=fsMod.doc;getDoc=fsMod.getDoc;setDoc=fsMod.setDoc;updateDoc=fsMod.updateDoc;onSnapshot=fsMod.onSnapshot;runTransaction=fsMod.runTransaction;
+   collection=fsMod.collection;query=fsMod.query;where=fsMod.where;addDoc=fsMod.addDoc;orderBy=fsMod.orderBy;limit=fsMod.limit;
+   document.getElementById("net").textContent="Firebase: connected";
+   registerPlayer();
+   if(!heartbeatInterval)heartbeatInterval=setInterval(registerPlayer,25000);
+   return true;
+  }catch(e){
+   console.error(e);
+   firebaseLoadPromise=null;
+   document.getElementById("net").textContent="Firebase: unavailable — "+((e&&e.message)||e)+" (tap Online to retry)";
+   return false;
+  }
+ })();
+ return firebaseLoadPromise;
+}
+async function registerPlayer(){
+ try{await setDoc(doc(db,"players",myCode),{ownerId:playerId,name:myName,updatedAt:Date.now()},{merge:true})}catch(e){console.error(e)}
+}
+function withLoading(btn,busyLabel,fn){
+ const original=btn.textContent;
+ btn.onclick=async()=>{
+  if(btn.disabled)return;
+  btn.disabled=true;btn.textContent=busyLabel;
+  try{await fn()}finally{btn.disabled=false;btn.textContent=original}
+ };
+}
+
+/* ============ Sound ============ */
+let audioCtx=null,soundMuted=localStorage.getItem("chessMuted")==="1";
+function beep(freq,dur,type,vol){
+ if(soundMuted)return;
+ try{
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.value=vol;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+  o.stop(audioCtx.currentTime+dur);
+ }catch(e){}
+}
+function sndRoll(){beep(300,.08,"square",.06)}
+function sndMove(){beep(440,.07,"sine",.08)}
+function sndCapture(){beep(180,.16,"sawtooth",.14)}
+function sndFinishPiece(){beep(660,.12,"triangle",.1)}
+function sndWin(){beep(523,.15,"sine",.12);setTimeout(()=>beep(659,.15,"sine",.12),140);setTimeout(()=>beep(784,.25,"sine",.14),280)}
+document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+document.getElementById("muteBtn").onclick=()=>{
+ soundMuted=!soundMuted;localStorage.setItem("chessMuted",soundMuted?"1":"0");
+ document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+};
+
+/* ============ Celebration ============ */
+function launchConfetti(n){
+ const colors=["#f43f5e","#facc15","#22c55e","#38bdf8","#a78bfa","#fb923c"];
+ for(let i=0;i<n;i++){
+  const el=document.createElement("div");el.className="confetti-piece";
+  el.style.left=Math.random()*100+"vw";el.style.background=colors[Math.floor(Math.random()*colors.length)];
+  el.style.animationDuration=(2.2+Math.random()*1.6)+"s";el.style.animationDelay=(Math.random()*0.6)+"s";
+  document.body.appendChild(el);setTimeout(()=>el.remove(),4200);
+ }
+}
+function showCelebration(colorName){
+ sndWin();launchConfetti(160);
+ const wrap=document.createElement("div");wrap.className="celebrate";
+ wrap.innerHTML=`<div class="celebrate-card"><div class="celebrate-title">🏆 ${colorName[0].toUpperCase()+colorName.slice(1)} Wins!</div><div class="celebrate-sub">All 4 tokens made it home.</div><button class="celebrate-close primary">Continue</button></div>`;
+ document.body.appendChild(wrap);
+ wrap.querySelector(".celebrate-close").onclick=()=>wrap.remove();
+ wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
+ setTimeout(()=>{if(document.body.contains(wrap))wrap.remove()},10000);
+}
+
+/* ============ Board rendering ============ */
+const BASE_ORIGIN={red:[0,0],green:[0,9],yellow:[9,9],blue:[9,0]};
+const START_OWNER={};for(const c of COLORS){const p=RING[STARTS[c]];START_OWNER[p[0]+","+p[1]]=c}
+function buildBoardSkeleton(el){
+ el.innerHTML="";
+ for(let r=0;r<15;r++)for(let c=0;c<15;c++){
+  const cell=document.createElement("div");
+  cell.className="lcell";cell.dataset.r=r;cell.dataset.c=c;
+  const key=r+","+c;
+  if(r===7&&c===7){cell.classList.add("lfinish");cell.textContent="🏆"}
+  else if(STRETCH_MAP[key]){cell.classList.add("lstretch-"+STRETCH_MAP[key])}
+  else if(RING_SET.has(key)){
+   cell.classList.add("lpath");
+   if(START_OWNER[key]){cell.classList.add("lsafe","lstart-"+START_OWNER[key])}
+  }else{
+   const owner=homeBaseOwner(r,c);
+   if(owner){
+    cell.classList.add("lhome-"+owner);
+    const rr=r-BASE_ORIGIN[owner][0],cc=c-BASE_ORIGIN[owner][1];
+    if(rr>=1&&rr<=4&&cc>=1&&cc<=4){
+     cell.classList.add("lhome-in");
+     const rad="34%";
+     if(rr===1&&cc===1)cell.style.borderTopLeftRadius=rad;
+     if(rr===1&&cc===4)cell.style.borderTopRightRadius=rad;
+     if(rr===4&&cc===1)cell.style.borderBottomLeftRadius=rad;
+     if(rr===4&&cc===4)cell.style.borderBottomRightRadius=rad;
+    }
+    const isNest=NESTS[owner].some(p=>p[0]===r&&p[1]===c);
+    if(isNest){const slot=document.createElement("div");slot.className="nest-slot nest-"+owner;cell.appendChild(slot)}
+   }
+  }
+  el.appendChild(cell);
+ }
+}
+/* ---- pawn graphics ---- */
+const PAWN_COL={red:["#ff8a80","#e53935","#8e1b1b"],green:["#b9f6ca","#43a047","#1b5e20"],yellow:["#fff9c4","#fdd835","#a68400"],blue:["#bbdefb","#1e88e5","#0d47a1"]};
+(function installPawnDefs(){
+ const d=document.createElement("div");
+ d.style.cssText="position:absolute;width:0;height:0;overflow:hidden";
+ d.innerHTML='<svg width="0" height="0"><defs>'+COLORS.map(c=>`<linearGradient id="pg-${c}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${PAWN_COL[c][0]}"/><stop offset=".45" stop-color="${PAWN_COL[c][1]}"/><stop offset="1" stop-color="${PAWN_COL[c][2]}"/></linearGradient>`).join("")+'</defs></svg>';
+ document.body.appendChild(d);
+})();
+function pawnIcon(color,px){return '<span class="pawnIco" style="width:'+px+'px;height:'+Math.round(px*1.3)+'px">'+pawnHTML(color)+'</span>'}
+function tallyHTML(colors,tokens,labelFn){
+ return colors.map(c=>{const home=tokens[c].filter(p=>p>=61).length;return '<span class="tallyItem">'+pawnIcon(c,22)+' '+labelFn(c)+': <b>'+home+'/4</b></span>'}).join("");
+}
+function pawnHTML(color){
+ const f="url(#pg-"+color+")";
+ return `<svg viewBox="0 0 40 52" preserveAspectRatio="xMidYMax meet" width="100%" height="100%"><ellipse cx="20" cy="48.5" rx="15" ry="3.6" fill="#000" opacity=".25"/><path d="M7 46C7 41 13 40 15 33C16 29 17 27 17 25L23 25C23 27 24 29 25 33C27 40 33 41 33 46C33 49 28 50 20 50C12 50 7 49 7 46Z" fill="${f}" stroke="#0008" stroke-width="1"/><ellipse cx="20" cy="25" rx="8.5" ry="3" fill="${f}" stroke="#0008" stroke-width="1"/><circle cx="20" cy="15" r="9.5" fill="${f}" stroke="#0008" stroke-width="1"/><ellipse cx="16.5" cy="11.3" rx="3.4" ry="2.3" fill="#fff" opacity=".65"/></svg>`;
+}
+function cellEl(boardEl,r,c){return boardEl.querySelector(`.lcell[data-r="${r}"][data-c="${c}"]`)}
+function renderTokens(boardEl,state,onTokenClick){
+ boardEl.querySelectorAll(".ltoken").forEach(t=>t.remove());
+ for(const color of state.activeColors){
+  for(let i=0;i<4;i++){
+   const pos=state.tokens[color][i];
+   let r,c;
+   if(pos===-1){[r,c]=NESTS[color][i]}
+   else if(pos>=61){continue} // finished, not shown on board
+   else{[r,c]=cellOf(color,pos)}
+   const cell=cellEl(boardEl,r,c);if(!cell)continue;
+   const tok=document.createElement("div");
+   tok.className="ltoken";
+   tok.innerHTML=pawnHTML(color);
+   const stackN=cell.querySelectorAll(".ltoken").length;
+   tok.style.left=(7+stackN*9)+"%";tok.style.bottom=(3+stackN*9)+"%";tok.style.zIndex=String(3+stackN);
+   const movable=state.movable&&state.movable.some(m=>m.color===color&&m.idx===i);
+   if(movable)tok.classList.add("movable");
+   tok.onclick=(e)=>{e.stopPropagation();if(movable)onTokenClick(color,i)};
+   cell.appendChild(tok);
+  }
+ }
+}
+function renderDice(el,value,rolling){
+ el.classList.toggle("rolling",!!rolling);
+ const dots=[[0,0],[0,0]];
+ const layout={
+  1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]
+ };
+ const on=new Set(layout[value]||[]);
+ el.innerHTML="";
+ for(let i=0;i<9;i++){
+  const d=document.createElement("div");d.className="dot";
+  const dotEl=document.createElement("i");if(on.has(i))dotEl.style.display="block";
+  d.appendChild(dotEl);el.appendChild(d);
+ }
+}
+
+/* ============ Game engine (pure functions, shared by local & online) ============ */
+function newGameState(activeColors){
+ const tokens={};for(const c of COLORS)tokens[c]={};
+ const t={};for(const c of activeColors)t[c]=[-1,-1,-1,-1];
+ return{activeColors,tokens:t,turnIdx:0,dice:0,movable:[],mustRollAgain:false,winner:null,log:[]};
+}
+function currentColor(state){return state.activeColors[state.turnIdx]}
+function computeMovable(state,roll){
+ const color=currentColor(state);
+ const res=[];
+ state.tokens[color].forEach((pos,idx)=>{
+  if(pos>=61)return;
+  if(pos===-1){if(roll===6)res.push({color,idx})}
+  else if(pos+roll<=61)res.push({color,idx})
+ });
+ return res;
+}
+function applyMove(state,color,idx,roll){
+ const cur=state.tokens[color][idx];
+ const newPos=cur===-1?0:cur+roll;
+ let captured=false;
+ if(newPos>=61){
+  state.tokens[color][idx]=61;
+  state.log.unshift(`${color} finished a token! 🏁`);
+ }else{
+  state.tokens[color][idx]=newPos;
+  if(newPos<=54){
+   const [r,c]=cellOf(color,newPos);
+   const key=r+","+c;
+   if(!SAFE_SET.has(key)){
+    for(const oc of state.activeColors){
+     if(oc===color)continue;
+     state.tokens[oc].forEach((p,oi)=>{
+      if(p>=0&&p<=54){
+       const [or_,oc_]=cellOf(oc,p);
+       if(or_===r&&oc_===c){state.tokens[oc][oi]=-1;captured=true;state.log.unshift(`${color} captured ${oc}'s token! 💥`)}
+      }
+     });
+    }
+   }
+  }
+ }
+ const finishedCount=state.tokens[color].filter(p=>p>=61).length;
+ if(finishedCount===4)state.winner=color;
+ return captured;
+}
+function advanceTurn(state,roll,captured){
+ if(state.winner)return;
+ if(roll===6||captured){state.mustRollAgain=true}
+ else{
+  state.mustRollAgain=false;
+  state.turnIdx=(state.turnIdx+1)%state.activeColors.length;
+ }
+ state.dice=0;state.movable=[];
+}
+
+/* ============ 3D dice (rolls over the whole board) ============ */
+const CUBE_ROT={1:[0,0],2:[0,-90],3:[-90,0],4:[90,0],5:[0,90],6:[0,180]};
+const DOT_LAYOUT={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function makeCube(el,size){
+ el.className="cubeWrap";el.style.setProperty("--s",size);
+ el.innerHTML='<div class="cube">'+[1,2,3,4,5,6].map(v=>{
+  const on=new Set(DOT_LAYOUT[v]);let h="";
+  for(let i=0;i<9;i++)h+='<i class="'+(on.has(i)?(v===1?"d1":"d"):"")+'"></i>';
+  return '<div class="face f'+v+'">'+h+'</div>';
+ }).join("")+'</div>';
+ el._sx=0;el._sy=0;
+ setCube(el,1,0);
+}
+function setCube(el,value,spins){
+ const cube=el.firstChild;if(!cube)return;
+ const rot=CUBE_ROT[value]||[0,0];
+ if(spins){el._sx+=spins;el._sy+=spins+1}
+ cube.style.transition=spins?"transform 1.05s cubic-bezier(.15,.7,.25,1)":"transform .35s ease";
+ cube.style.transform="rotateX("+(rot[0]+360*el._sx)+"deg) rotateY("+(rot[1]+360*el._sy)+"deg)";
+}
+function showDie(id,v){if(v)setCube(document.getElementById(id),v,0)}
+["dice-local","diceBig-local","dice-online","diceBig-online"].forEach(id=>{
+ const big=id.startsWith("diceBig");
+ makeCube(document.getElementById(id),big?"min(58vw,48vh,270px)":"84px");
+});
+document.getElementById("dice-local").classList.add("diceClick");
+document.getElementById("dice-online").classList.add("diceClick");
+document.getElementById("dice-local").onclick=()=>document.getElementById("rollLocal").click();
+document.getElementById("dice-online").onclick=()=>document.getElementById("rollOnline").click();
+function rollAnimation(overlayId,bigId,smallId,cb){
+ const ov=document.getElementById(overlayId),big=document.getElementById(bigId),small=document.getElementById(smallId);
+ const capEl=document.getElementById(overlayId.replace("diceOverlay","diceCap"));
+ const roll=1+Math.floor(Math.random()*6);
+ capEl.textContent="🎲 Rolling…";
+ ov.classList.remove("hidden");
+ sndRoll();
+ setCube(big,roll,3);setCube(small,roll,3);
+ setTimeout(sndRoll,450);
+ setTimeout(()=>{
+  capEl.textContent="🎲 "+roll;
+  setTimeout(()=>ov.classList.add("hidden"),900);
+  cb(roll);
+ },1150);
+}
+function flashDice(overlayId,bigId,value){
+ const ov=document.getElementById(overlayId);
+ document.getElementById(overlayId.replace("diceOverlay","diceCap")).textContent="🎲 "+value;
+ setCube(document.getElementById(bigId),value,2);
+ ov.classList.remove("hidden");
+ setTimeout(()=>ov.classList.add("hidden"),1600);
+}
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+
+/* ============ LOCAL MODE ============ */
+const localBoardEl=document.getElementById("board-local");
+buildBoardSkeleton(localBoardEl);
+let LS=null,localRolling=false,botTimer=null;
+function say(el,a,b){if(el)el.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
+function startLocalGame(activeColors,botMode){
+ clearTimeout(botTimer);localRolling=false;
+ document.getElementById("diceOverlay-local").classList.add("hidden");
+ LS=newGameState(activeColors);
+ LS.id=Math.random();
+ LS.isBot={};activeColors.forEach((c,i)=>{LS.isBot[c]=!!botMode&&i!==0});
+ LS.lastBotMode=!!botMode;
+ document.getElementById("rollLocal").disabled=false;
+ 
+ renderLocal();
+ announceLocalTurn("Roll the dice to begin.");
+ maybeBotTurn();
+}
+function announceLocalTurn(msg){
+ const c=currentColor(LS);
+ say(document.getElementById("status-local"),cap(c)+"'s turn"+(LS.isBot[c]?" 🤖":""),msg);
+}
+function renderLocal(){
+ renderTokens(localBoardEl,LS,(color,idx)=>onLocalTokenPick(color,idx,false));
+ localBoardEl.style.outline="4px solid "+COLOR_HEX[currentColor(LS)];
+ document.getElementById("tally-local").innerHTML=tallyHTML(LS.activeColors,LS.tokens,c=>cap(c)+(LS.isBot[c]?" 🤖":""));
+ document.getElementById("log-local").innerHTML=LS.log.slice(0,20).map(l=>`<div>${l}</div>`).join("");
+}
+function botChoose(state,movable,roll){
+ let best=movable[0],bestScore=-1e9;
+ for(const m of movable){
+  const sim={activeColors:state.activeColors,tokens:JSON.parse(JSON.stringify(state.tokens)),turnIdx:state.turnIdx,winner:null,log:[]};
+  const before=state.tokens[m.color][m.idx];
+  const captured=applyMove(sim,m.color,m.idx,roll);
+  const after=sim.tokens[m.color][m.idx];
+  let score=after;
+  if(captured)score+=100;
+  if(after>=61)score+=60;
+  if(before===-1)score+=40;
+  if(after>=55&&after<61)score+=10;
+  if(after>=0&&after<=54){const [r,c]=cellOf(m.color,after);if(SAFE_SET.has(r+","+c))score+=15}
+  if(score>bestScore){bestScore=score;best=m}
+ }
+ return best;
+}
+function maybeBotTurn(){
+ clearTimeout(botTimer);
+ if(!LS||LS.winner)return;
+ if(LS.isBot[currentColor(LS)]){
+  document.getElementById("rollLocal").disabled=true;
+  botTimer=setTimeout(localRoll,800);
+ }
+}
+function onLocalTokenPick(color,idx,fromBot){
+ if(!LS||LS.winner||color!==currentColor(LS)||!LS.dice)return;
+ if(LS.isBot[color]&&!fromBot)return;
+ const roll=LS.dice;
+ const captured=applyMove(LS,color,idx,roll);
+ sndMove();if(captured)sndCapture();
+ if(LS.tokens[color][idx]===61)sndFinishPiece();
+ if(LS.winner){
+  renderLocal();showCelebration(LS.winner);
+  say(document.getElementById("status-local"),cap(LS.winner)+" wins!","Start a new game to play again.");
+  document.getElementById("rollLocal").disabled=true;return;
+ }
+ advanceTurn(LS,roll,captured);
+ renderLocal();
+ announceLocalTurn(LS.mustRollAgain?"Roll again!":"Roll the dice.");
+ document.getElementById("rollLocal").disabled=!!LS.isBot[currentColor(LS)];
+ maybeBotTurn();
+}
+function localRoll(){
+ if(!LS||LS.winner||localRolling)return;
+ const gid=LS.id;
+ localRolling=true;
+ document.getElementById("rollLocal").disabled=true;
+ rollAnimation("diceOverlay-local","diceBig-local","dice-local",roll=>{
+  if(!LS||LS.id!==gid)return;
+  LS.dice=roll;
+  const color=currentColor(LS);
+  const movable=computeMovable(LS,roll);
+  LS.movable=movable;localRolling=false;
+  if(!movable.length){
+   LS.log.unshift(`${color} rolled ${roll} — no valid moves.`);
+   advanceTurn(LS,roll,false);
+   renderLocal();announceLocalTurn("Roll the dice.");
+   document.getElementById("rollLocal").disabled=!!LS.isBot[currentColor(LS)];
+   maybeBotTurn();return;
+  }
+  renderLocal();
+  if(LS.isBot[color]){
+   const pick=botChoose(LS,movable,roll);
+   setTimeout(()=>{if(LS&&LS.id===gid)onLocalTokenPick(pick.color,pick.idx,true)},550);
+   return;
+  }
+  if(movable.length===1){
+   setTimeout(()=>{if(LS&&LS.id===gid)onLocalTokenPick(movable[0].color,movable[0].idx,false)},450);
+   return;
+  }
+  say(document.getElementById("status-local"),cap(color)+" rolled "+roll,"Tap a glowing token to move it.");
+ });
+}
+document.getElementById("rollLocal").onclick=()=>{if(LS&&LS.isBot[currentColor(LS)])return;localRoll()};
+document.getElementById("local2p").onclick=()=>startLocalGame(["red","yellow"],false);
+document.getElementById("local4p").onclick=()=>startLocalGame(["red","green","yellow","blue"],false);
+document.getElementById("local2bot").onclick=()=>startLocalGame(["red","yellow"],true);
+document.getElementById("local4bot").onclick=()=>startLocalGame(["red","green","yellow","blue"],true);
+document.getElementById("newLudoLocal").onclick=()=>startLocalGame(LS?LS.activeColors:["red","green","yellow","blue"],LS?LS.lastBotMode:false);
+
+/* ============ ONLINE MODE ============ */
+const onlineBoardEl=document.getElementById("board-online");
+buildBoardSkeleton(onlineBoardEl);
+let lastFlashKey=null;
+let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false,onlineResultHandled=false,onlineRolling=false;
+const ONLINE_SECONDS=30;
+function serializeState(s){return{activeColors:s.activeColors,tokens:s.tokens,turnIdx:s.turnIdx,winner:s.winner,log:s.log.slice(0,30)}}
+function withLoadingWrap(btnId,label,fn){withLoading(document.getElementById(btnId),label,fn)}
+
+withLoadingWrap("createRoom2p","Connecting…",()=>createLudoRoom(["red","yellow"]));
+withLoadingWrap("createRoom4p","Connecting…",()=>createLudoRoom(["red","green","yellow","blue"]));
+async function createLudoRoom(activeColors){
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  const id=code6();onlineRoomRef=doc(db,"ludoRooms",id);
+  const gs=newGameState(activeColors);
+  const seatIds={},seatNames={};
+  activeColors.forEach((c,i)=>{seatIds[c]=i===0?playerId:null;seatNames[c]=i===0?myName:null});
+  const data={...serializeState(gs),seatIds,seatNames,status:"waiting",turnStartedAt:Date.now(),updatedAt:Date.now()};
+  await setDoc(onlineRoomRef,data);
+  document.getElementById("roomCode").value=id;
+  onlineMyColor=activeColors[0];
+  listenLudoOnline(id);
+ }catch(e){console.error(e);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write for ludoRooms in the Firebase console.")}
+}
+withLoadingWrap("joinRoom","Connecting…",async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
+  onlineRoomRef=doc(db,"ludoRooms",id);const s=await getDoc(onlineRoomRef);if(!s.exists()){alert("Room not found.");return}
+  const d=s.data();
+  let mySeat=Object.keys(d.seatIds).find(c=>d.seatIds[c]===playerId);
+  if(!mySeat){
+   mySeat=Object.keys(d.seatIds).find(c=>!d.seatIds[c]);
+   if(!mySeat){alert("Room is full.");return}
+   const seatIds={...d.seatIds,[mySeat]:playerId},seatNames={...d.seatNames,[mySeat]:myName};
+   const allFilled=Object.values(seatIds).every(v=>v);
+   await updateDoc(onlineRoomRef,{seatIds,seatNames,status:allFilled?"playing":"waiting",turnStartedAt:Date.now(),updatedAt:Date.now()});
+  }
+  onlineMyColor=mySeat;
+  listenLudoOnline(id);
+ }catch(e){console.error(e);alert("Join room failed: "+(e.code||e.message))}
+});
+function listenLudoOnline(id){
+ if(onlineUnsub)onlineUnsub();
+ localStorage.setItem("ludoLastRoom",id);checkRejoinAvailable();
+ onlineResultHandled=false;
+ onlineUnsub=onSnapshot(onlineRoomRef,s=>{
+  if(!s.exists()){say(document.getElementById("status-online"),"Room closed","");return}
+  onlineRoom=s.data();
+  renderSeats();
+  document.getElementById("tally-online").innerHTML=tallyHTML(onlineRoom.activeColors,onlineRoom.tokens,c=>cap(c));
+  renderTokens(onlineBoardEl,{activeColors:onlineRoom.activeColors,tokens:onlineRoom.tokens,movable:computeIsMyTurn()?computeMovable(onlineRoom,onlineRoom.dice||0):[]},(color,idx)=>onOnlineTokenPick(color,idx));
+  showDie("dice-online",onlineRoom.dice);
+  if(onlineRoom.dice>0&&onlineRoom.activeColors[onlineRoom.turnIdx]!==onlineMyColor){
+   const fk=onlineRoom.turnStartedAt+"-"+onlineRoom.dice;
+   if(fk!==lastFlashKey){lastFlashKey=fk;flashDice("diceOverlay-online","diceBig-online",onlineRoom.dice)}
+  }
+  document.getElementById("log-online").innerHTML=(onlineRoom.log||[]).slice(0,20).map(l=>`<div>${l}</div>`).join("");
+  const myTurn=computeIsMyTurn();
+  document.getElementById("rollOnline").disabled=!(onlineRoom.status==="playing"&&myTurn&&!(onlineRoom.dice>0&&(onlineRoom.movable||[]).length));
+  if(onlineRoom.winner){
+   say(document.getElementById("status-online"),onlineRoom.winner+" wins!","Game over");
+   if(!onlineResultHandled){onlineResultHandled=true;if(onlineRoom.winner===onlineMyColor)showCelebration(onlineRoom.winner)}
+  }else if(onlineRoom.status==="waiting"){
+   say(document.getElementById("status-online"),"Waiting for players","Share your Player ID or room code: "+id);
+  }else{
+   const cur=onlineRoom.activeColors[onlineRoom.turnIdx];
+   say(document.getElementById("status-online"),myTurn?"Your turn ("+cur+")":(cur+"'s turn"),onlineRoom.dice?"Rolled "+onlineRoom.dice:"Waiting to roll…");
+  }
+  updateOnlineTimerDisplay();
+ },e=>say(document.getElementById("status-online"),"Firebase error",e.message));
+}
+function computeIsMyTurn(){return onlineRoom&&onlineRoom.status==="playing"&&onlineRoom.activeColors[onlineRoom.turnIdx]===onlineMyColor}
+function renderSeats(){
+ if(!onlineRoom)return;
+ document.getElementById("seatsBox").innerHTML=onlineRoom.activeColors.map(c=>{
+  const name=onlineRoom.seatNames[c];
+  return `<div class="player seat-${c}"><span class="tallyItem" style="background:none;padding:0;margin:0">${pawnIcon(c,22)} ${cap(c)}</span><b>${name?name+(onlineRoom.seatIds[c]===playerId?" (You)":""):"Open seat"}</b></div>`;
+ }).join("");
+}
+document.getElementById("rollOnline").onclick=()=>{
+ if(!onlineRoom||onlineRolling||!computeIsMyTurn())return;
+ onlineRolling=true;
+ document.getElementById("rollOnline").disabled=true;
+ rollAnimation("diceOverlay-online","diceBig-online","dice-online",async roll=>{
+  onlineRolling=false;
+  try{
+   await runTransaction(db,async tx=>{
+    const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room no longer exists");
+    const d=snap.data();if(d.activeColors[d.turnIdx]!==onlineMyColor)throw Error("Not your turn");
+    const state={activeColors:d.activeColors,tokens:JSON.parse(JSON.stringify(d.tokens)),turnIdx:d.turnIdx,winner:d.winner,log:d.log||[]};
+    const movable=computeMovable(state,roll);
+    if(!movable.length){
+     state.log.unshift(`${onlineMyColor} rolled ${roll} — no valid moves.`);
+     advanceTurn(state,roll,false);
+     tx.update(onlineRoomRef,{...serializeState(state),dice:0,movable:[],turnStartedAt:Date.now(),updatedAt:Date.now()});
+    }else{
+     tx.update(onlineRoomRef,{dice:roll,movable,turnStartedAt:Date.now(),updatedAt:Date.now()});
+    }
+   });
+  }catch(e){console.error(e);alert(e.message)}
+ });
+};
+async function onOnlineTokenPick(color,idx){
+ if(!onlineRoom||onlineBusy||!computeIsMyTurn())return;
+ const roll=onlineRoom.dice;
+ if(!roll)return;
+ onlineBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room no longer exists");
+   const d=snap.data();if(d.activeColors[d.turnIdx]!==onlineMyColor)throw Error("Not your turn");
+   const state={activeColors:d.activeColors,tokens:JSON.parse(JSON.stringify(d.tokens)),turnIdx:d.turnIdx,winner:d.winner,log:d.log||[]};
+   const stillMovable=computeMovable(state,d.dice).some(m=>m.color===color&&m.idx===idx);
+   if(!stillMovable)throw Error("That move is no longer valid.");
+   const captured=applyMove(state,color,idx,d.dice);
+   if(!state.winner)advanceTurn(state,d.dice,captured);
+   tx.update(onlineRoomRef,{...serializeState(state),dice:0,movable:[],turnStartedAt:Date.now(),updatedAt:Date.now()});
+  });
+  sndMove();
+ }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
+}
+function updateOnlineTimerDisplay(){
+ const el=document.getElementById("timer-online");if(!el)return;
+ if(!onlineRoom||onlineRoom.winner||onlineRoom.status!=="playing"){el.textContent="";return}
+ const elapsed=Math.floor((Date.now()-(onlineRoom.turnStartedAt||Date.now()))/1000);
+ const left=Math.max(0,ONLINE_SECONDS-elapsed);
+ const cur=onlineRoom.activeColors[onlineRoom.turnIdx];
+ el.textContent="⏱ "+(cur===onlineMyColor?"Your":cur+"'s")+" time: "+left+"s";
+ if(left<=0&&cur===onlineMyColor&&!onlineBusy&&!onlineRolling)autoPlayOnline();
+}
+async function autoPlayOnline(){
+ if(!onlineRoom)return;
+ if(!onlineRoom.dice){document.getElementById("rollOnline").click();return}
+ const movable=computeMovable(onlineRoom,onlineRoom.dice);
+ if(movable.length)await onOnlineTokenPick(movable[0].color,movable[0].idx);
+}
+setInterval(updateOnlineTimerDisplay,1000);
+document.getElementById("resignOnline").onclick=()=>{
+ if(onlineUnsub)onlineUnsub();
+ localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();
+ onlineRoom=null;onlineMyColor=null;
+ say(document.getElementById("status-online"),"Left the room","Create or join another room to keep playing.");
+ document.getElementById("seatsBox").innerHTML="";
+};
+
+/* ---- Rejoin ---- */
+function checkRejoinAvailable(){
+ const r=localStorage.getItem("ludoLastRoom");
+ document.getElementById("rejoinBanner-online").classList.toggle("hidden",!r);
+}
+document.getElementById("rejoinBtn-online").onclick=async()=>{
+ const id=localStorage.getItem("ludoLastRoom");if(!id)return;
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  onlineRoomRef=doc(db,"ludoRooms",id);
+  const s=await getDoc(onlineRoomRef);
+  if(!s.exists()){alert("That room no longer exists.");localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();return}
+  const d=s.data();
+  const mySeat=Object.keys(d.seatIds).find(c=>d.seatIds[c]===playerId);
+  if(!mySeat){alert("Couldn't rejoin — you're not seated in this room.");localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();return}
+  onlineMyColor=mySeat;document.getElementById("roomCode").value=id;
+  listenLudoOnline(id);document.getElementById("rejoinBanner-online").classList.add("hidden");
+ }catch(e){alert("Rejoin failed: "+(e.code||e.message))}
+};
+
+/* ---- Player ID / Active players (identity shared with Chess) ---- */
+document.getElementById("myCodeShow").value=myCode;
+document.getElementById("myNameInput").value=myName;
+document.getElementById("copyMyCode").onclick=async()=>{await navigator.clipboard.writeText(myCode)};
+document.getElementById("myNameInput").onchange=async(e)=>{
+ myName=e.target.value.trim()||myName;localStorage.setItem("chessMyName",myName);
+ if(db)await registerPlayer();
+};
+let activePlayersUnsub=null;
+document.getElementById("showActiveBtn").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ document.getElementById("activeModal").classList.remove("hidden");
+ document.getElementById("activeList").innerHTML="Loading…";
+ if(activePlayersUnsub)activePlayersUnsub();
+ const q=query(collection(db,"players"),orderBy("updatedAt","desc"),limit(50));
+ activePlayersUnsub=onSnapshot(q,snap=>{
+  const now=Date.now(),list=document.getElementById("activeList");
+  const rows=snap.docs.filter(d=>{const v=d.data();return d.id!==myCode&&(now-(v.updatedAt||0))<90000});
+  if(!rows.length){list.innerHTML='<div class="muted">No one else is active right now. Share your Player ID or room code with a friend directly.</div>';return}
+  list.innerHTML=rows.map(d=>{
+   const v=d.data();
+   return `<div class="player" style="margin-bottom:8px"><span>🟢 <b>${v.name||d.id}</b><div class="muted" style="font-size:11px">${d.id}</div></span><span class="muted" style="font-size:12px">Share your room code with them</span></div>`;
+  }).join("");
+ },e=>{console.error(e);document.getElementById("activeList").innerHTML='<div class="muted">Could not load active players: '+(e.code||e.message)+'</div>'});
+};
+document.getElementById("closeActiveModal").onclick=()=>{
+ document.getElementById("activeModal").classList.add("hidden");
+ if(activePlayersUnsub){activePlayersUnsub();activePlayersUnsub=null}
+};
+
+/* ============ Full screen ============ */
+function setupFullscreen(boardElId,btnId){
+ const btn=document.getElementById(btnId),boardEl=document.getElementById(boardElId);
+ if(!btn||!boardEl)return;
+ const target=boardEl.closest(".boardCard");
+ btn.onclick=()=>{
+  const isFs=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!isFs){
+   const req=target.requestFullscreen||target.webkitRequestFullscreen;
+   if(!req){alert("Full screen isn't supported on this browser/device.");return}
+   req.call(target).catch(e=>alert("Couldn't enter full screen: "+e.message));
+  }else{
+   (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+ };
+ const onChange=()=>{
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  btn.textContent=(fsEl===target)?"✕ Exit Full Screen":"⛶ Full Screen";
+ };
+ document.addEventListener("fullscreenchange",onChange);
+ document.addEventListener("webkitfullscreenchange",onChange);
+}
+setupFullscreen("board-local","fullscreen-local");
+setupFullscreen("board-online","fullscreen-online");
+
+/* ============ NAV ============ */
+function showScreen(name){
+ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById("scr"+name).classList.add("active");
+ document.getElementById("nav"+name).classList.add("active");
+}
+document.getElementById("navLocal").onclick=()=>showScreen("Local");
+document.getElementById("navOnline").onclick=()=>showScreen("Online");
+
+/* ============ INIT ============ */
+startLocalGame(["red","green","yellow","blue"]);
+document.getElementById("net").textContent="Firebase: not connected yet";
+loadFirebase();
+checkRejoinAvailable();
+@@LUDO_SCRIPT_CLOSE@@
+</body>
+</html>
+
+</script>
+
 <div id="activeModal" class="hidden" style="position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px">
  <div class="card panel" style="max-width:440px;width:100%;max-height:75vh;overflow:auto">
   <div class="top" style="margin-bottom:10px"><b style="font-size:18px">👥 Active Players</b><button id="closeActiveModal">✕</button></div>
@@ -1171,11 +2017,31 @@ document.getElementById("navTourn").onclick=()=>showScreen("Tourn");
 /* ============ INIT ============ */
 document.getElementById("hubChess").onclick=()=>{
  document.getElementById("hub").classList.add("hidden");
+ document.getElementById("ludoApp").classList.add("hidden");
  document.getElementById("chessApp").classList.remove("hidden");
 };
-document.getElementById("hubLudo").onclick=()=>{window.location.href="ludo.html"};
+document.getElementById("hubLudo").onclick=()=>{
+ document.getElementById("hub").classList.add("hidden");
+ document.getElementById("chessApp").classList.add("hidden");
+ const ludoApp=document.getElementById("ludoApp");
+ ludoApp.classList.remove("hidden");
+ const frame=document.getElementById("ludoFrame");
+ if(!frame.dataset.loaded){
+  const raw=document.getElementById("ludoSource").textContent.replace(/@@LUDO_SCRIPT_CLOSE@@/g,"<"+"/script>");
+  frame.srcdoc=raw;
+  frame.dataset.loaded="1";
+ }
+};
+window.addEventListener("message",e=>{
+ if(e.data==="ludoGoHome"){
+  document.getElementById("ludoApp").classList.add("hidden");
+  document.getElementById("chessApp").classList.add("hidden");
+  document.getElementById("hub").classList.remove("hidden");
+ }
+});
 document.getElementById("hubBackBtn").onclick=()=>{
  document.getElementById("chessApp").classList.add("hidden");
+ document.getElementById("ludoApp").classList.add("hidden");
  document.getElementById("hub").classList.remove("hidden");
 };
 newLocalGame();
