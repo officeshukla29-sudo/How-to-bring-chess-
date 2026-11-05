@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Chess — Local, Online &amp; Tournament</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1321;color:#eef2f7;font-family:Inter,system-ui,Arial,sans-serif}
+.app{max-width:1180px;width:96%;margin:16px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
+.nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.nav button{background:#182235;border:1px solid #2c3a50;color:#94a3b8;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:650}
+.nav button.active{background:#22c55e;color:#05220e;border-color:#22c55e}
+.screen{display:none}.screen.active{display:block}
+.grid{display:grid;grid-template-columns:minmax(320px,760px) 320px;gap:18px}
+.card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}.boardCard{padding:12px}.board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none}
+.sq{position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:filter .12s}
+.sq:hover{filter:brightness(1.08)}
+.light{background:linear-gradient(160deg,#f3e0bd,#e8c99a)}.dark{background:linear-gradient(160deg,#a9764f,#8a5c3b)}
+.sq.sel{box-shadow:inset 0 0 0 5px #facc15}.sq.check{background-image:linear-gradient(#ef4444aa,#ef4444aa)}.sq.hint{box-shadow:inset 0 0 0 4px #38bdf8}
+.sq.lastmove{background-image:linear-gradient(#facc1550,#facc1550)}
+.sq.move:after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;background:#22c55e88}.sq.capture:after{content:"";position:absolute;inset:7%;border:5px solid #22c55e88;border-radius:50%}
+.piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(35px,7.4vw,68px);line-height:1;z-index:2;transition:transform .12s;will-change:transform}
+.wp{background:linear-gradient(180deg,#ffffff 0%,#f1f1ee 45%,#cfcbc0 75%,#a9a396 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 #ffffffcc) drop-shadow(0 3px 2px #0006) drop-shadow(0 7px 7px #0007)}
+.bp{background:linear-gradient(180deg,#5b5b5b 0%,#2c2c2c 45%,#0e0e0e 80%,#000 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 #ffffff33) drop-shadow(0 3px 3px #0008) drop-shadow(0 7px 6px #0009)}
+.sq.sel .piece{transform:scale(1.1)}
+.boardCard{perspective:1500px}
+.board{box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 18px 40px -12px #000a;border-radius:8px;transition:transform .35s ease;position:relative}
+.board.board3d{transform:rotateX(var(--tiltX,52deg)) rotateY(var(--tiltY,0deg)) scale(1.16);transform-origin:50% 78%;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 45px 60px -18px #000d;transition:transform .5s cubic-bezier(.22,.7,.32,1)}
+.board.board3d::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 90% 60% at 50% 8%,#fff3,transparent 65%);pointer-events:none;z-index:1}
+.board.board3d .sq.light{background:linear-gradient(160deg,#f6e5c4,#e0bd8e)}
+.board.board3d .sq.dark{background:linear-gradient(160deg,#a06a42,#7c4f32)}
+.board.board3d .piece{filter:drop-shadow(0 1px 0 #ffffff33) drop-shadow(0 10px 8px rgba(0,0,0,.55));transform:translateY(-8%);position:relative}
+.board.board3d .piece:after{content:"";position:absolute;left:50%;bottom:-38%;width:70%;height:22%;background:radial-gradient(ellipse,rgba(0,0,0,.45),transparent 72%);transform:translateX(-50%);z-index:-1}
+.board.board3d .sq.sel .piece{transform:translateY(-16%) scale(1.1)}
+.board.board3d .sq:hover .piece{transform:translateY(-12%) scale(1.04)}
+.piece.sliding{transition:transform .32s cubic-bezier(.2,.7,.3,1)!important}
+.coord{position:absolute;font-size:10px;font-weight:700;opacity:.65}.rank{top:3px;left:4px}.file{bottom:3px;right:4px}.light .coord{color:#765536}.dark .coord{color:#f7dfb8}
+.panel{padding:17px}.status{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px;margin-bottom:12px}.status b{font-size:18px}.status div{color:#94a3b8;font-size:12px;margin-top:3px}
+select,button,input{font:inherit;border:0;border-radius:10px;padding:11px 12px}select,input{background:#0e1726;color:white;border:1px solid #35445b;width:100%}
+button{background:#334155;color:white;cursor:pointer;font-weight:650}button:hover{background:#475569}.primary{background:#22c55e;color:#05220e}.primary:hover{background:#16a34a}
+.hintbtn{background:#0284c7}.hintbtn:hover{background:#0369a1}
+.modeRow{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.room{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px}.room input{text-transform:uppercase;font-weight:800;letter-spacing:2px}
+.title{font-size:12px;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:14px 0 7px}.moves{height:200px;overflow:auto;background:#0e1726;border-radius:10px;padding:7px}.row{display:grid;grid-template-columns:34px 1fr 1fr;padding:5px 7px;border-bottom:1px solid #223047;font-size:13px}
+.cap{display:flex;gap:2px;flex-wrap:wrap;min-height:22px;font-size:16px}
+.players{display:grid;gap:7px;margin:12px 0}.player{padding:9px 11px;background:#0e1726;border-radius:10px;display:flex;justify-content:space-between}.you{border:1px solid #22c55e55}
+.hidden{display:none!important}
+.tform{display:grid;gap:8px;margin-bottom:14px}
+.bracket{display:grid;gap:10px}
+.bmatch{background:#0e1726;border:1px solid #2e3c52;border-radius:12px;padding:12px}
+.bmatch .rd{font-size:11px;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px}
+.bp2{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #223047}
+.bp2:last-of-type{border-bottom:none}
+.bp2.win{color:#22c55e;font-weight:700}
+.champ{font-size:20px;font-weight:800;color:#facc15;text-align:center;padding:16px;background:#0e1726;border-radius:12px;margin-top:10px}
+.online .card{margin-bottom:0}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status,.modeRow,.buttons,.title,.moves,.room,.players{grid-column:span 2}.moves{height:170px}}
+.grid.fs-active{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;background:#0d1321;width:100vw;height:100vh;overflow:auto;padding:16px;box-sizing:border-box;gap:16px}
+.grid.fs-active .boardCard{width:min(94vw,80vh,640px);flex:none}
+.grid.fs-active .panel{width:min(94vw,640px)}
+@media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.piece{font-size:clamp(29px,11vw,46px)}}
+.celebrate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#000a;padding:16px}
+.celebrate-card{background:linear-gradient(160deg,#1c2438,#0f1522);border:1px solid #3d4f70;border-radius:20px;padding:32px 36px;text-align:center;box-shadow:0 30px 80px #000a;max-width:340px;animation:popIn .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes popIn{from{transform:scale(.4) translateY(30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.celebrate-title{font-size:32px;font-weight:800;margin-bottom:8px}
+.celebrate-sub{font-size:16px;color:#facc15;font-weight:700;margin-bottom:18px}
+.confetti-piece{position:fixed;top:-24px;width:9px;height:15px;z-index:199;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(680deg);opacity:.15}}
+.hub{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;text-align:center}
+.hub h1{font-size:38px;margin:0}
+.hub .sub{color:#93a4bd}
+.hub-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.hub-card{width:220px;padding:28px 20px;border-radius:20px;cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid #2c3a50}
+.hub-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px #0007}
+.hub-card .emoji{font-size:52px;margin-bottom:10px}
+.hub-card .name{font-size:20px;font-weight:800;margin-bottom:4px}
+.hub-card .desc{font-size:13px;color:#93a4bd}
+.hub-card.chess{background:linear-gradient(160deg,#182235,#0f1522)}
+.hub-card.ludo{background:linear-gradient(160deg,#2a1e35,#1a1120)}
+</style>
+</head>
+<body>
+<div id="hub" class="hub">
+<h1>🎮 Game Center</h1>
+<div class="sub">Choose a game to play — locally or online with friends.</div>
+<div class="hub-cards">
+<div class="hub-card chess" id="hubChess"><div class="emoji">♟</div><div class="name">Play Chess</div><div class="desc">Local · Online 1v1 · 6-Player Tournament</div></div>
+<div class="hub-card ludo" id="hubLudo"><div class="emoji">🎲</div><div class="name">Play Ludo</div><div class="desc">Local · Online 2-4 Players</div></div>
+</div>
+</div>
+<div id="chessApp" class="hidden">
+<div class="app">
+<div class="top"><div><h1>♟ Chess</h1><div class="muted">Local · Online 1v1 · 6-Team Tournament</div></div><div style="display:flex;align-items:center;gap:12px"><button id="hubBackBtn" style="padding:8px 12px">🏠 Menu</button><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
+<div class="nav">
+<button id="navLocal" class="active">Quick Play</button>
+<button id="navOnline">Online 1v1</button>
+<button id="navTourn">Tournament</button>
+</div>
+
+<!-- LOCAL SCREEN -->
+<div id="scrLocal" class="screen active">
+<div class="grid">
+<div class="card boardCard"><div id="board-local" class="board"></div></div>
+<div class="card panel">
+<div id="status-local" class="status"><b>White to move</b><div>New game</div></div>
+<div class="modeRow">
+<select id="mode"><option value="pvp">Pass &amp; Play (2 players)</option><option value="cpu-b">Vs Computer — I play White</option><option value="cpu-w">Vs Computer — I play Black</option></select>
+<select id="diff"><option value="1">Computer: Easy</option><option value="2" selected>Computer: Medium</option><option value="3">Computer: Hard</option></select>
+</div>
+<div class="buttons"><button id="newgame" class="primary">New Game</button><button id="flip-local">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-local">⛶ Full Screen</button><button id="threeD-local">🧊 3D View</button></div>
+<div class="buttons"><button id="hint-local" class="hintbtn">💡 Hint</button><button id="undo">Undo</button></div>
+<div class="title">Captured</div><div class="cap" id="capWhite-local"></div><div class="cap" id="capBlack-local"></div>
+<div class="title">Move History</div><div id="moves-local" class="moves"></div>
+</div>
+</div>
+</div>
+
+<!-- ONLINE 1v1 SCREEN -->
+<div id="scrOnline" class="screen">
+<div class="grid">
+<div class="card boardCard"><div id="board-online" class="board"></div></div>
+<div class="card panel">
+<div id="status-online" class="status"><b>Not connected</b><div>Create or join a room.</div></div>
+<div id="timer-online" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
+<div id="rejoinBanner-online" class="hidden" style="background:#0e1726;border:1px solid #22c55e55;border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="muted">You have a game in progress</span><button id="rejoinBtn-online" class="primary" style="padding:8px 12px">Rejoin</button></div>
+<div id="inviteBanner-online" class="hidden" style="background:#0e1726;border:1px solid #facc1555;border-radius:12px;padding:10px 12px;margin-bottom:10px"></div>
+<div class="title" style="margin-top:0">Your Player ID</div>
+<div class="room"><input id="myCodeShow" readonly><button id="copyMyCode">Copy</button></div>
+<input id="myNameInput" placeholder="Your display name" style="margin-bottom:8px">
+<div class="room"><input id="friendCode" maxlength="6" placeholder="FRIEND'S PLAYER ID"><button id="sendInvite" class="primary">Invite</button></div>
+<button id="showActiveBtn" style="width:100%;margin-bottom:10px">👥 See Active Players</button>
+<div class="title">Or use a Room Code</div>
+<div class="room"><input id="roomCode" maxlength="6" placeholder="ROOM CODE"><button id="copyRoom">Copy</button></div>
+<div class="buttons"><button id="createRoom" class="primary">Create Room</button><button id="joinRoom">Join Room</button></div>
+<div class="players"><div class="player" id="online-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="online-black"><span>♚ Black</span><b>Waiting</b></div></div>
+<div class="buttons"><button id="hint-online" class="hintbtn">💡 Hint</button><button id="flip-online">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-online">⛶ Full Screen</button><button id="threeD-online">🧊 3D View</button></div>
+<div class="buttons"><button id="resignOnline">Resign</button></div>
+<div class="title">Move History</div><div id="moves-online" class="moves"></div>
+</div>
+</div>
+</div>
+
+<!-- TOURNAMENT SCREEN -->
+<div id="scrTourn" class="screen">
+<div id="tournHome">
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div class="card panel">
+<div class="title">Create Tournament (6 players)</div>
+<button id="buildViaInvites" class="primary" style="margin-bottom:10px">🎯 Build via Invites</button>
+<div class="muted" style="margin-bottom:14px">Recruit real people from your Active Players list — as each one accepts, they're locked into a seed. Once all 6 are in, the bracket starts automatically.</div>
+<div class="title" style="margin:0 0 7px">Or enter names manually</div>
+<div class="tform">
+<input id="t1" placeholder="Player 1 (seed 1)"><input id="t2" placeholder="Player 2 (seed 2)">
+<input id="t3" placeholder="Player 3 (seed 3)"><input id="t4" placeholder="Player 4 (seed 4)">
+<input id="t5" placeholder="Player 5 (seed 5)"><input id="t6" placeholder="Player 6 (seed 6)">
+</div>
+<button id="createTourn">Create Tournament</button>
+<div class="muted" style="margin-top:8px">Seeds 1 &amp; 2 get a bye straight to semifinals. Seeds 3-6 play quarterfinals.</div>
+</div>
+<div class="card panel">
+<div class="title">Join Tournament</div>
+<div id="rejoinBanner-tourn" class="hidden" style="background:#0e1726;border:1px solid #22c55e55;border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="muted">You were in a tournament</span><button id="rejoinBtn-tourn" class="primary" style="padding:8px 12px">Rejoin</button></div>
+<div class="room"><input id="tid" placeholder="TOURNAMENT ID"><button id="loadTourn" class="primary">Load</button></div>
+<div class="muted">Ask the organizer for the Tournament ID and enter it here to view the bracket and play your matches.</div>
+</div>
+</div>
+</div>
+<div id="tournView" class="hidden">
+<div class="card panel" style="margin-bottom:16px">
+<div class="top" style="margin-bottom:0"><div><b id="tournName" style="font-size:20px"></b><div class="muted">Tournament ID: <b id="tournIdShow"></b></div></div><button id="backHome">← Back</button></div>
+</div>
+<div id="recruitBox" class="hidden card panel" style="margin-bottom:16px">
+<div class="title" style="margin-top:0">Recruiting Players</div>
+<div id="recruitSeats" class="players"></div>
+<div class="muted">Share Tournament ID <b id="recruitIdShow"></b> so players can also join with "Load" and watch live. Only the organizer can send invites for open seats.</div>
+</div>
+<div id="champBox"></div>
+<div class="bracket" id="bracketBox"></div>
+</div>
+<div id="tournMatch" class="hidden">
+<div class="grid">
+<div class="card boardCard"><div id="board-tourn" class="board"></div></div>
+<div class="card panel">
+<div id="status-tourn" class="status"><b>Not connected</b><div></div></div>
+<div id="timer-tourn" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
+<div class="players"><div class="player" id="tourn-white"><span>♔ White</span><b>Waiting</b></div><div class="player" id="tourn-black"><span>♚ Black</span><b>Waiting</b></div></div>
+<div class="buttons"><button id="hint-tourn" class="hintbtn">💡 Hint</button><button id="flip-tourn">Flip Board</button></div>
+<div class="buttons"><button id="fullscreen-tourn">⛶ Full Screen</button><button id="threeD-tourn">🧊 3D View</button></div>
+<button id="backBracket" style="margin-bottom:12px">← Back to Bracket</button>
+<div class="title">Move History</div><div id="moves-tourn" class="moves"></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+<div id="ludoApp" class="hidden" style="position:fixed;inset:0;z-index:40;background:#0d1321">
+<iframe id="ludoFrame" style="width:100%;height:100%;border:0;display:block"></iframe>
+</div>
+
+<script type="text/plain" id="ludoSource">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ludo — Local &amp; Online</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1321;color:#eef2f7;font-family:Inter,system-ui,Arial,sans-serif}
+.app{max-width:1180px;width:96%;margin:16px auto}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+h1{margin:0;font-size:28px}.muted{color:#94a3b8;font-size:13px}
+.nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.nav button{background:#182235;border:1px solid #2c3a50;color:#94a3b8;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:650}
+.nav button.active{background:#22c55e;color:#05220e;border-color:#22c55e}
+.screen{display:none}.screen.active{display:block}
+.grid{display:grid;grid-template-columns:minmax(320px,760px) 340px;gap:18px}
+.card{background:#182235;border:1px solid #2c3a50;border-radius:18px;box-shadow:0 14px 45px #0005}
+.boardCard{padding:12px;position:relative}
+.panel{padding:16px}
+.title{font-weight:750;margin:14px 0 8px}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #2c3a50;background:#0f1626;color:#eef2f7;font-size:15px;margin-bottom:8px}
+button{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer;background:#243349;color:#eef2f7}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:#22c55e;color:#05220e}
+.buttons{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.buttons button{flex:1}
+.room{display:flex;gap:8px;margin-bottom:10px}.room input{margin-bottom:0}
+.status{background:#0f1626;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.status b{font-size:16px}.status div{color:#94a3b8;font-size:13px;margin-top:2px}
+.hidden{display:none!important}
+.player{display:flex;justify-content:space-between;align-items:center;background:#0f1626;border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.seat-red{border-left:4px solid #ef4444}.seat-green{border-left:4px solid #22c55e}.seat-yellow{border-left:4px solid #facc15}.seat-blue{border-left:4px solid #38bdf8}
+
+.lboard{display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;user-select:none;box-shadow:0 0 0 8px #4a3320,0 0 0 11px #2a1c10,0 18px 40px -12px #000a;background:#0f1626;position:relative}
+.lcell{position:relative;display:flex;align-items:center;justify-content:center}
+.lcell{box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.lhome-red{background:#e53935}.lhome-green{background:#43a047}.lhome-yellow{background:#fdd835}.lhome-blue{background:#1e88e5}
+.lhome-in{background:#fff!important;box-shadow:none}
+.nest-slot{width:80%;height:80%;border-radius:50%;box-shadow:inset 0 3px 7px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.7)}
+.nest-red{background:radial-gradient(circle at 40% 35%,#ef5350,#b71c1c)}.nest-green{background:radial-gradient(circle at 40% 35%,#66bb6a,#1b5e20)}
+.nest-yellow{background:radial-gradient(circle at 40% 35%,#ffee58,#c79100)}.nest-blue{background:radial-gradient(circle at 40% 35%,#42a5f5,#0d47a1)}
+.lpath{background:#fbf8f0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.lpath.lsafe{box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.lpath.lsafe:after{content:"★";position:absolute;color:#fff;font-size:clamp(10px,2.4vw,20px);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.lstart-red{background:#e53935!important}.lstart-green{background:#43a047!important}.lstart-yellow{background:#fdd835!important}.lstart-blue{background:#1e88e5!important}
+.lstretch-red{background:#e53935;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}.lstretch-green{background:#43a047;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.lstretch-yellow{background:#fdd835;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}.lstretch-blue{background:#1e88e5;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.lfinish{background:conic-gradient(from -45deg,#43a047 0 25%,#fdd835 25% 50%,#1e88e5 50% 75%,#e53935 75% 100%);display:flex;align-items:center;justify-content:center;font-size:clamp(12px,2.6vw,26px);box-shadow:inset 0 0 0 2px rgba(0,0,0,.4),0 0 10px rgba(0,0,0,.4)}
+.ltoken{position:absolute;width:86%;height:108%;bottom:3%;cursor:pointer;z-index:3;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));transition:filter .15s}
+.ltoken svg{display:block;overflow:visible}
+.ltoken.movable{animation:pawnHop .65s ease-in-out infinite;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 3px #fff);z-index:12}
+@keyframes pawnHop{0%,100%{transform:translateY(0)}50%{transform:translateY(-16%)}}
+.diceWrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin:12px 0 18px}
+.diceOverlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle,#000000a0,#000000e6);z-index:300;pointer-events:none}
+.diceCap{font-size:30px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
+.pawnIco{display:inline-block;vertical-align:middle;flex:none}
+.tallyItem{display:inline-flex;align-items:center;gap:6px;background:#0f1626;border-radius:10px;padding:6px 12px;margin:0 6px 6px 0;font-size:15px}
+.cubeWrap{width:var(--s,90px);height:var(--s,90px);perspective:calc(var(--s,90px)*5);margin:calc(var(--s,90px)*.08)}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;filter:drop-shadow(0 12px 10px rgba(0,0,0,.5))}
+.face{position:absolute;width:100%;height:100%;background:linear-gradient(145deg,#ffffff,#e2e2e2);border-radius:18%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14%;box-shadow:inset 0 0 0 1px #cfcfcf,inset 0 -4px 8px rgba(0,0,0,.12);backface-visibility:hidden}
+.face i{display:block;margin:12%}
+.face i.d{background:radial-gradient(circle at 35% 30%,#555,#111);border-radius:50%}
+.face i.d1{background:radial-gradient(circle at 35% 30%,#ff6b81,#c2002f);border-radius:50%}
+.f1{transform:translateZ(calc(var(--s,90px)/2))}
+.f2{transform:rotateY(90deg) translateZ(calc(var(--s,90px)/2))}
+.f3{transform:rotateX(90deg) translateZ(calc(var(--s,90px)/2))}
+.f4{transform:rotateX(-90deg) translateZ(calc(var(--s,90px)/2))}
+.f5{transform:rotateY(-90deg) translateZ(calc(var(--s,90px)/2))}
+.f6{transform:rotateY(180deg) translateZ(calc(var(--s,90px)/2))}
+.diceClick{cursor:pointer}
+button{font-size:16px}
+h1{font-size:34px!important}
+.top button{font-size:24px;padding:8px 14px}
+.nav button{font-size:18px;padding:12px 20px}
+.buttons button{font-size:16px;padding:14px 10px}
+#rollLocal,#rollOnline{font-size:22px;padding:15px 20px;width:230px!important}
+.finishTally{font-size:16px}
+@media(max-width:920px){.grid{grid-template-columns:1fr}}
+.turnBadge{display:inline-block;padding:6px 14px;border-radius:20px;font-weight:800;font-size:14px}
+.log{max-height:140px;overflow-y:auto;font-size:12.5px;color:#94a3b8;background:#0f1626;border-radius:10px;padding:8px 10px}
+.log div{margin-bottom:3px}
+.finishTally{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.finishTally span{font-size:18px}
+
+.grid.fs-active{display:flex!important;flex-direction:column;align-items:center;justify-content:flex-start;background:#0d1321;width:100vw;height:100vh;overflow:auto;padding:16px;box-sizing:border-box;gap:16px}
+.grid.fs-active .boardCard{width:min(94vw,80vh,640px);flex:none}
+.grid.fs-active .panel{width:min(94vw,640px)}
+@media(max-width:500px){.app{width:98%;margin:8px auto}.boardCard{padding:6px}.panel{padding:11px}.lfinish{font-size:16px}}
+
+.celebrate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#000a;padding:16px}
+.celebrate-card{background:linear-gradient(160deg,#1c2438,#0f1522);border:1px solid #3d4f70;border-radius:20px;padding:32px 36px;text-align:center;box-shadow:0 30px 80px #000a;max-width:340px;animation:popIn .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes popIn{from{transform:scale(.4) translateY(30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.celebrate-title{font-size:30px;font-weight:800;margin-bottom:8px}
+.celebrate-sub{font-size:15px;color:#facc15;font-weight:700;margin-bottom:18px}
+.confetti-piece{position:fixed;top:-24px;width:9px;height:15px;z-index:199;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(680deg);opacity:.15}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><div><h1>🎲 Ludo</h1><div class="muted">Local · Online 2-4 Players</div></div><div style="display:flex;align-items:center;gap:12px"><a href="chess_tournament.html" id="ludoMenuLink" style="text-decoration:none" onclick="if(window.parent&&window.parent!==window){window.parent.postMessage('ludoGoHome','*');return false}"><button style="padding:8px 12px">🏠 Menu</button></a><button id="muteBtn" style="padding:8px 12px">🔊</button><div id="net" class="muted">Firebase: connecting…</div></div></div>
+<div class="nav">
+<button id="navLocal" class="active">🎮 Local</button>
+<button id="navOnline">🌐 Online</button>
+</div>
+
+<!-- LOCAL SCREEN -->
+<div id="scrLocal" class="screen active">
+<div class="grid">
+<div class="card boardCard"><div id="board-local" class="lboard"></div><div id="diceOverlay-local" class="diceOverlay hidden"><div id="diceBig-local"></div><div id="diceCap-local" class="diceCap"></div></div></div>
+<div class="card panel">
+<div id="status-local" class="status"><b>Ready to play</b><div>Choose player count and start a new game.</div></div>
+<div class="title" style="margin-top:0">🎮 Players</div>
+<div class="buttons"><button id="local2p" class="primary">👥 2 Players</button><button id="local4p" class="primary">👥 4 Players</button></div>
+<div class="buttons"><button id="local2bot" class="primary">🤖 vs Computer</button><button id="local4bot" class="primary">🤖 vs 3 Computers</button></div>
+<button id="newLudoLocal" style="width:100%;margin-bottom:12px">🔄 New Game</button>
+<div class="diceWrap">
+<div id="dice-local" class="dice"></div>
+<button id="rollLocal" class="primary">🎲 Roll Dice</button>
+</div>
+<div class="title">📊 Progress</div>
+<div id="tally-local" class="finishTally"></div>
+<div class="buttons" style="margin-top:12px"><button id="fullscreen-local">⛶ Full Screen</button></div>
+<div class="title">📜 Game Log</div><div id="log-local" class="log"></div>
+</div>
+</div>
+</div>
+
+<!-- ONLINE SCREEN -->
+<div id="scrOnline" class="screen">
+<div class="grid">
+<div class="card boardCard"><div id="board-online" class="lboard"></div><div id="diceOverlay-online" class="diceOverlay hidden"><div id="diceBig-online"></div><div id="diceCap-online" class="diceCap"></div></div></div>
+<div class="card panel">
+<div id="status-online" class="status"><b>Not connected</b><div>Create or join a room.</div></div>
+<div id="timer-online" class="muted" style="margin:-6px 0 10px;font-weight:700"></div>
+<div id="rejoinBanner-online" class="hidden" style="background:#0e1726;border:1px solid #22c55e55;border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="muted">You have a game in progress</span><button id="rejoinBtn-online" class="primary" style="padding:8px 12px">Rejoin</button></div>
+<div id="inviteBanner-online" class="hidden" style="background:#0e1726;border:1px solid #facc1555;border-radius:12px;padding:10px 12px;margin-bottom:10px"></div>
+<div class="title" style="margin-top:0">🆔 Your Player ID</div>
+<div class="room"><input id="myCodeShow" readonly><button id="copyMyCode">📋 Copy</button></div>
+<input id="myNameInput" placeholder="Your display name">
+<button id="showActiveBtn" style="width:100%;margin-bottom:10px">👥 See Active Players</button>
+<div class="title">🏠 Create a Room</div>
+<div class="buttons"><button id="createRoom2p" class="primary">👥 2-Player Room</button><button id="createRoom4p" class="primary">👥 4-Player Room</button></div>
+<div class="title">🔑 Join a Room</div>
+<div class="room"><input id="roomCode" maxlength="6" placeholder="ROOM CODE"><button id="joinRoom">🔑 Join</button></div>
+<div id="seatsBox" class="players"></div>
+<div class="diceWrap">
+<div id="dice-online" class="dice"></div>
+<button id="rollOnline" class="primary">🎲 Roll Dice</button>
+</div>
+<div class="title">📊 Progress</div>
+<div id="tally-online" class="finishTally"></div>
+<div class="buttons" style="margin-top:12px"><button id="fullscreen-online">⛶ Full Screen</button><button id="resignOnline">🚪 Leave / Resign</button></div>
+<div class="title">📜 Game Log</div><div id="log-online" class="log"></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div id="activeModal" class="hidden" style="position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px">
+ <div class="card panel" style="max-width:440px;width:100%;max-height:75vh;overflow:auto">
+  <div class="top" style="margin-bottom:10px"><b style="font-size:18px">👥 Active Players</b><button id="closeActiveModal">✕</button></div>
+  <div id="activeList" class="muted">Loading…</div>
+ </div>
+</div>
+
+<script type="module">
+const firebaseConfig={
+  apiKey:"AIzaSyBPwEOdI8WwPKZVCJhvyANp5MPQKmAG79w",
+  authDomain:"chess-dab2c.firebaseapp.com",
+  projectId:"chess-dab2c",
+  storageBucket:"chess-dab2c.firebasestorage.app",
+  messagingSenderId:"639996000069",
+  appId:"1:639996000069:web:716d98a89d0fbb3e10702c"
+};
+
+/* ============ BOARD TOPOLOGY (verified, see gen_ludo_board2.py) ============ */
+const RING=[[6,1],[6,2],[6,3],[6,4],[6,5],[6,6],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[8,8],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const STARTS={red:0,green:14,yellow:28,blue:42};
+const HOMECOLS={red:[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],green:[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],yellow:[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],blue:[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]]};
+const NESTS={red:[[1,1],[1,4],[4,1],[4,4]],green:[[1,10],[1,13],[4,10],[4,13]],yellow:[[10,10],[10,13],[13,10],[13,13]],blue:[[10,1],[10,4],[13,1],[13,4]]};
+const FINISH=[7,7];
+const COLORS=["red","green","yellow","blue"];
+const COLOR_HEX={red:"#ef4444",green:"#22c55e",yellow:"#facc15",blue:"#38bdf8"};
+const RING_SET=new Set(RING.map(p=>p[0]+","+p[1]));
+const SAFE_SET=new Set(Object.values(STARTS).map(i=>RING[i][0]+","+RING[i][1]));
+const STRETCH_MAP={};for(const c of COLORS)for(const p of HOMECOLS[c])STRETCH_MAP[p[0]+","+p[1]]=c;
+function homeBaseOwner(r,c){if(r<=5&&c<=5)return"red";if(r<=5&&c>=9)return"green";if(r>=9&&c>=9)return"yellow";if(r>=9&&c<=5)return"blue";return null}
+// Local path per color: 55 ring cells (their own rotation) + 6 home-stretch cells = 61 cells (index 0-60). Reaching index 61 = finished.
+const LOCALPATH={};
+for(const c of COLORS){
+ const s=STARTS[c],arr=[];
+ for(let i=0;i<55;i++)arr.push(RING[(s+i)%56]);
+ for(const p of HOMECOLS[c])arr.push(p);
+ LOCALPATH[c]=arr;
+}
+function cellOf(color,pos){return LOCALPATH[color][pos]}
+
+/* ============ Firebase (loaded lazily; identity shared with the Chess app) ============ */
+let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction,collection,query,where,addDoc,orderBy,limit;
+let playerId=localStorage.getItem("chessPlayerId");
+if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
+let myCode=localStorage.getItem("chessMyCode");
+if(!myCode){myCode=code6();localStorage.setItem("chessMyCode",myCode)}
+let myName=localStorage.getItem("chessMyName")||("Player-"+myCode.slice(0,3));
+let heartbeatInterval=null;
+function code6(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+
+let firebaseLoadPromise=null;
+function loadFirebase(){
+ if(firebaseLoadPromise)return firebaseLoadPromise;
+ firebaseLoadPromise=(async()=>{
+  try{
+   document.getElementById("net").textContent="Firebase: connecting…";
+   const appMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js");
+   const fsMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js");
+   const app=appMod.initializeApp(firebaseConfig);
+   db=fsMod.getFirestore(app);
+   doc=fsMod.doc;getDoc=fsMod.getDoc;setDoc=fsMod.setDoc;updateDoc=fsMod.updateDoc;onSnapshot=fsMod.onSnapshot;runTransaction=fsMod.runTransaction;
+   collection=fsMod.collection;query=fsMod.query;where=fsMod.where;addDoc=fsMod.addDoc;orderBy=fsMod.orderBy;limit=fsMod.limit;
+   document.getElementById("net").textContent="Firebase: connected";
+   registerPlayer();
+   if(!heartbeatInterval)heartbeatInterval=setInterval(registerPlayer,25000);
+   return true;
+  }catch(e){
+   console.error(e);
+   firebaseLoadPromise=null;
+   document.getElementById("net").textContent="Firebase: unavailable — "+((e&&e.message)||e)+" (tap Online to retry)";
+   return false;
+  }
+ })();
+ return firebaseLoadPromise;
+}
+async function registerPlayer(){
+ try{await setDoc(doc(db,"players",myCode),{ownerId:playerId,name:myName,updatedAt:Date.now()},{merge:true})}catch(e){console.error(e)}
+}
+function withLoading(btn,busyLabel,fn){
+ const original=btn.textContent;
+ btn.onclick=async()=>{
+  if(btn.disabled)return;
+  btn.disabled=true;btn.textContent=busyLabel;
+  try{await fn()}finally{btn.disabled=false;btn.textContent=original}
+ };
+}
+
+/* ============ Sound ============ */
+let audioCtx=null,soundMuted=localStorage.getItem("chessMuted")==="1";
+function beep(freq,dur,type,vol){
+ if(soundMuted)return;
+ try{
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.value=vol;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+  o.stop(audioCtx.currentTime+dur);
+ }catch(e){}
+}
+function sndRoll(){beep(300,.08,"square",.06)}
+function sndMove(){beep(440,.07,"sine",.08)}
+function sndCapture(){beep(180,.16,"sawtooth",.14)}
+function sndFinishPiece(){beep(660,.12,"triangle",.1)}
+function sndWin(){beep(523,.15,"sine",.12);setTimeout(()=>beep(659,.15,"sine",.12),140);setTimeout(()=>beep(784,.25,"sine",.14),280)}
+document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+document.getElementById("muteBtn").onclick=()=>{
+ soundMuted=!soundMuted;localStorage.setItem("chessMuted",soundMuted?"1":"0");
+ document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+};
+
+/* ============ Celebration ============ */
+function launchConfetti(n){
+ const colors=["#f43f5e","#facc15","#22c55e","#38bdf8","#a78bfa","#fb923c"];
+ for(let i=0;i<n;i++){
+  const el=document.createElement("div");el.className="confetti-piece";
+  el.style.left=Math.random()*100+"vw";el.style.background=colors[Math.floor(Math.random()*colors.length)];
+  el.style.animationDuration=(2.2+Math.random()*1.6)+"s";el.style.animationDelay=(Math.random()*0.6)+"s";
+  document.body.appendChild(el);setTimeout(()=>el.remove(),4200);
+ }
+}
+function showCelebration(colorName){
+ sndWin();launchConfetti(160);
+ const wrap=document.createElement("div");wrap.className="celebrate";
+ wrap.innerHTML=`<div class="celebrate-card"><div class="celebrate-title">🏆 ${colorName[0].toUpperCase()+colorName.slice(1)} Wins!</div><div class="celebrate-sub">All 4 tokens made it home.</div><button class="celebrate-close primary">Continue</button></div>`;
+ document.body.appendChild(wrap);
+ wrap.querySelector(".celebrate-close").onclick=()=>wrap.remove();
+ wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
+ setTimeout(()=>{if(document.body.contains(wrap))wrap.remove()},10000);
+}
+
+/* ============ Board rendering ============ */
+const BASE_ORIGIN={red:[0,0],green:[0,9],yellow:[9,9],blue:[9,0]};
+const START_OWNER={};for(const c of COLORS){const p=RING[STARTS[c]];START_OWNER[p[0]+","+p[1]]=c}
+function buildBoardSkeleton(el){
+ el.innerHTML="";
+ for(let r=0;r<15;r++)for(let c=0;c<15;c++){
+  const cell=document.createElement("div");
+  cell.className="lcell";cell.dataset.r=r;cell.dataset.c=c;
+  const key=r+","+c;
+  if(r===7&&c===7){cell.classList.add("lfinish");cell.textContent="🏆"}
+  else if(STRETCH_MAP[key]){cell.classList.add("lstretch-"+STRETCH_MAP[key])}
+  else if(RING_SET.has(key)){
+   cell.classList.add("lpath");
+   if(START_OWNER[key]){cell.classList.add("lsafe","lstart-"+START_OWNER[key])}
+  }else{
+   const owner=homeBaseOwner(r,c);
+   if(owner){
+    cell.classList.add("lhome-"+owner);
+    const rr=r-BASE_ORIGIN[owner][0],cc=c-BASE_ORIGIN[owner][1];
+    if(rr>=1&&rr<=4&&cc>=1&&cc<=4){
+     cell.classList.add("lhome-in");
+     const rad="34%";
+     if(rr===1&&cc===1)cell.style.borderTopLeftRadius=rad;
+     if(rr===1&&cc===4)cell.style.borderTopRightRadius=rad;
+     if(rr===4&&cc===1)cell.style.borderBottomLeftRadius=rad;
+     if(rr===4&&cc===4)cell.style.borderBottomRightRadius=rad;
+    }
+    const isNest=NESTS[owner].some(p=>p[0]===r&&p[1]===c);
+    if(isNest){const slot=document.createElement("div");slot.className="nest-slot nest-"+owner;cell.appendChild(slot)}
+   }
+  }
+  el.appendChild(cell);
+ }
+}
+/* ---- pawn graphics ---- */
+const PAWN_COL={red:["#ff8a80","#e53935","#8e1b1b"],green:["#b9f6ca","#43a047","#1b5e20"],yellow:["#fff9c4","#fdd835","#a68400"],blue:["#bbdefb","#1e88e5","#0d47a1"]};
+(function installPawnDefs(){
+ const d=document.createElement("div");
+ d.style.cssText="position:absolute;width:0;height:0;overflow:hidden";
+ d.innerHTML='<svg width="0" height="0"><defs>'+COLORS.map(c=>`<linearGradient id="pg-${c}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${PAWN_COL[c][0]}"/><stop offset=".45" stop-color="${PAWN_COL[c][1]}"/><stop offset="1" stop-color="${PAWN_COL[c][2]}"/></linearGradient>`).join("")+'</defs></svg>';
+ document.body.appendChild(d);
+})();
+function pawnIcon(color,px){return '<span class="pawnIco" style="width:'+px+'px;height:'+Math.round(px*1.3)+'px">'+pawnHTML(color)+'</span>'}
+function tallyHTML(colors,tokens,labelFn){
+ return colors.map(c=>{const home=tokens[c].filter(p=>p>=61).length;return '<span class="tallyItem">'+pawnIcon(c,22)+' '+labelFn(c)+': <b>'+home+'/4</b></span>'}).join("");
+}
+function pawnHTML(color){
+ const f="url(#pg-"+color+")";
+ return `<svg viewBox="0 0 40 52" preserveAspectRatio="xMidYMax meet" width="100%" height="100%"><ellipse cx="20" cy="48.5" rx="15" ry="3.6" fill="#000" opacity=".25"/><path d="M7 46C7 41 13 40 15 33C16 29 17 27 17 25L23 25C23 27 24 29 25 33C27 40 33 41 33 46C33 49 28 50 20 50C12 50 7 49 7 46Z" fill="${f}" stroke="#0008" stroke-width="1"/><ellipse cx="20" cy="25" rx="8.5" ry="3" fill="${f}" stroke="#0008" stroke-width="1"/><circle cx="20" cy="15" r="9.5" fill="${f}" stroke="#0008" stroke-width="1"/><ellipse cx="16.5" cy="11.3" rx="3.4" ry="2.3" fill="#fff" opacity=".65"/></svg>`;
+}
+function cellEl(boardEl,r,c){return boardEl.querySelector(`.lcell[data-r="${r}"][data-c="${c}"]`)}
+function renderTokens(boardEl,state,onTokenClick){
+ boardEl.querySelectorAll(".ltoken").forEach(t=>t.remove());
+ for(const color of state.activeColors){
+  for(let i=0;i<4;i++){
+   const pos=state.tokens[color][i];
+   let r,c;
+   if(pos===-1){[r,c]=NESTS[color][i]}
+   else if(pos>=61){continue} // finished, not shown on board
+   else{[r,c]=cellOf(color,pos)}
+   const cell=cellEl(boardEl,r,c);if(!cell)continue;
+   const tok=document.createElement("div");
+   tok.className="ltoken";
+   tok.innerHTML=pawnHTML(color);
+   const stackN=cell.querySelectorAll(".ltoken").length;
+   tok.style.left=(7+stackN*9)+"%";tok.style.bottom=(3+stackN*9)+"%";tok.style.zIndex=String(3+stackN);
+   const movable=state.movable&&state.movable.some(m=>m.color===color&&m.idx===i);
+   if(movable)tok.classList.add("movable");
+   tok.onclick=(e)=>{e.stopPropagation();if(movable)onTokenClick(color,i)};
+   cell.appendChild(tok);
+  }
+ }
+}
+function renderDice(el,value,rolling){
+ el.classList.toggle("rolling",!!rolling);
+ const dots=[[0,0],[0,0]];
+ const layout={
+  1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]
+ };
+ const on=new Set(layout[value]||[]);
+ el.innerHTML="";
+ for(let i=0;i<9;i++){
+  const d=document.createElement("div");d.className="dot";
+  const dotEl=document.createElement("i");if(on.has(i))dotEl.style.display="block";
+  d.appendChild(dotEl);el.appendChild(d);
+ }
+}
+
+/* ============ Game engine (pure functions, shared by local & online) ============ */
+function newGameState(activeColors){
+ const tokens={};for(const c of COLORS)tokens[c]={};
+ const t={};for(const c of activeColors)t[c]=[-1,-1,-1,-1];
+ return{activeColors,tokens:t,turnIdx:0,dice:0,movable:[],mustRollAgain:false,winner:null,log:[]};
+}
+function currentColor(state){return state.activeColors[state.turnIdx]}
+function computeMovable(state,roll){
+ const color=currentColor(state);
+ const res=[];
+ state.tokens[color].forEach((pos,idx)=>{
+  if(pos>=61)return;
+  if(pos===-1){if(roll===6)res.push({color,idx})}
+  else if(pos+roll<=61)res.push({color,idx})
+ });
+ return res;
+}
+function applyMove(state,color,idx,roll){
+ const cur=state.tokens[color][idx];
+ const newPos=cur===-1?0:cur+roll;
+ let captured=false;
+ if(newPos>=61){
+  state.tokens[color][idx]=61;
+  state.log.unshift(`${color} finished a token! 🏁`);
+ }else{
+  state.tokens[color][idx]=newPos;
+  if(newPos<=54){
+   const [r,c]=cellOf(color,newPos);
+   const key=r+","+c;
+   if(!SAFE_SET.has(key)){
+    for(const oc of state.activeColors){
+     if(oc===color)continue;
+     state.tokens[oc].forEach((p,oi)=>{
+      if(p>=0&&p<=54){
+       const [or_,oc_]=cellOf(oc,p);
+       if(or_===r&&oc_===c){state.tokens[oc][oi]=-1;captured=true;state.log.unshift(`${color} captured ${oc}'s token! 💥`)}
+      }
+     });
+    }
+   }
+  }
+ }
+ const finishedCount=state.tokens[color].filter(p=>p>=61).length;
+ if(finishedCount===4)state.winner=color;
+ return captured;
+}
+function advanceTurn(state,roll,captured){
+ if(state.winner)return;
+ if(roll===6||captured){state.mustRollAgain=true}
+ else{
+  state.mustRollAgain=false;
+  state.turnIdx=(state.turnIdx+1)%state.activeColors.length;
+ }
+ state.dice=0;state.movable=[];
+}
+
+/* ============ 3D dice (rolls over the whole board) ============ */
+const CUBE_ROT={1:[0,0],2:[0,-90],3:[-90,0],4:[90,0],5:[0,90],6:[0,180]};
+const DOT_LAYOUT={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function makeCube(el,size){
+ el.className="cubeWrap";el.style.setProperty("--s",size);
+ el.innerHTML='<div class="cube">'+[1,2,3,4,5,6].map(v=>{
+  const on=new Set(DOT_LAYOUT[v]);let h="";
+  for(let i=0;i<9;i++)h+='<i class="'+(on.has(i)?(v===1?"d1":"d"):"")+'"></i>';
+  return '<div class="face f'+v+'">'+h+'</div>';
+ }).join("")+'</div>';
+ el._sx=0;el._sy=0;
+ setCube(el,1,0);
+}
+function setCube(el,value,spins){
+ const cube=el.firstChild;if(!cube)return;
+ const rot=CUBE_ROT[value]||[0,0];
+ if(spins){el._sx+=spins;el._sy+=spins+1}
+ cube.style.transition=spins?"transform 1.05s cubic-bezier(.15,.7,.25,1)":"transform .35s ease";
+ cube.style.transform="rotateX("+(rot[0]+360*el._sx)+"deg) rotateY("+(rot[1]+360*el._sy)+"deg)";
+}
+function showDie(id,v){if(v)setCube(document.getElementById(id),v,0)}
+["dice-local","diceBig-local","dice-online","diceBig-online"].forEach(id=>{
+ const big=id.startsWith("diceBig");
+ makeCube(document.getElementById(id),big?"min(58vw,48vh,270px)":"84px");
+});
+document.getElementById("dice-local").classList.add("diceClick");
+document.getElementById("dice-online").classList.add("diceClick");
+document.getElementById("dice-local").onclick=()=>document.getElementById("rollLocal").click();
+document.getElementById("dice-online").onclick=()=>document.getElementById("rollOnline").click();
+function rollAnimation(overlayId,bigId,smallId,cb){
+ const ov=document.getElementById(overlayId),big=document.getElementById(bigId),small=document.getElementById(smallId);
+ const capEl=document.getElementById(overlayId.replace("diceOverlay","diceCap"));
+ const roll=1+Math.floor(Math.random()*6);
+ capEl.textContent="🎲 Rolling…";
+ ov.classList.remove("hidden");
+ sndRoll();
+ setCube(big,roll,3);setCube(small,roll,3);
+ setTimeout(sndRoll,450);
+ setTimeout(()=>{
+  capEl.textContent="🎲 "+roll;
+  setTimeout(()=>ov.classList.add("hidden"),900);
+  cb(roll);
+ },1150);
+}
+function flashDice(overlayId,bigId,value){
+ const ov=document.getElementById(overlayId);
+ document.getElementById(overlayId.replace("diceOverlay","diceCap")).textContent="🎲 "+value;
+ setCube(document.getElementById(bigId),value,2);
+ ov.classList.remove("hidden");
+ setTimeout(()=>ov.classList.add("hidden"),1600);
+}
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+
+/* ============ LOCAL MODE ============ */
+const localBoardEl=document.getElementById("board-local");
+buildBoardSkeleton(localBoardEl);
+let LS=null,localRolling=false,botTimer=null;
+function say(el,a,b){if(el)el.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
+function startLocalGame(activeColors,botMode){
+ clearTimeout(botTimer);localRolling=false;
+ document.getElementById("diceOverlay-local").classList.add("hidden");
+ LS=newGameState(activeColors);
+ LS.id=Math.random();
+ LS.isBot={};activeColors.forEach((c,i)=>{LS.isBot[c]=!!botMode&&i!==0});
+ LS.lastBotMode=!!botMode;
+ document.getElementById("rollLocal").disabled=false;
+ 
+ renderLocal();
+ announceLocalTurn("Roll the dice to begin.");
+ maybeBotTurn();
+}
+function announceLocalTurn(msg){
+ const c=currentColor(LS);
+ say(document.getElementById("status-local"),cap(c)+"'s turn"+(LS.isBot[c]?" 🤖":""),msg);
+}
+function renderLocal(){
+ renderTokens(localBoardEl,LS,(color,idx)=>onLocalTokenPick(color,idx,false));
+ localBoardEl.style.outline="4px solid "+COLOR_HEX[currentColor(LS)];
+ document.getElementById("tally-local").innerHTML=tallyHTML(LS.activeColors,LS.tokens,c=>cap(c)+(LS.isBot[c]?" 🤖":""));
+ document.getElementById("log-local").innerHTML=LS.log.slice(0,20).map(l=>`<div>${l}</div>`).join("");
+}
+function botChoose(state,movable,roll){
+ let best=movable[0],bestScore=-1e9;
+ for(const m of movable){
+  const sim={activeColors:state.activeColors,tokens:JSON.parse(JSON.stringify(state.tokens)),turnIdx:state.turnIdx,winner:null,log:[]};
+  const before=state.tokens[m.color][m.idx];
+  const captured=applyMove(sim,m.color,m.idx,roll);
+  const after=sim.tokens[m.color][m.idx];
+  let score=after;
+  if(captured)score+=100;
+  if(after>=61)score+=60;
+  if(before===-1)score+=40;
+  if(after>=55&&after<61)score+=10;
+  if(after>=0&&after<=54){const [r,c]=cellOf(m.color,after);if(SAFE_SET.has(r+","+c))score+=15}
+  if(score>bestScore){bestScore=score;best=m}
+ }
+ return best;
+}
+function maybeBotTurn(){
+ clearTimeout(botTimer);
+ if(!LS||LS.winner)return;
+ if(LS.isBot[currentColor(LS)]){
+  document.getElementById("rollLocal").disabled=true;
+  botTimer=setTimeout(localRoll,800);
+ }
+}
+function onLocalTokenPick(color,idx,fromBot){
+ if(!LS||LS.winner||color!==currentColor(LS)||!LS.dice)return;
+ if(LS.isBot[color]&&!fromBot)return;
+ const roll=LS.dice;
+ const captured=applyMove(LS,color,idx,roll);
+ sndMove();if(captured)sndCapture();
+ if(LS.tokens[color][idx]===61)sndFinishPiece();
+ if(LS.winner){
+  renderLocal();showCelebration(LS.winner);
+  say(document.getElementById("status-local"),cap(LS.winner)+" wins!","Start a new game to play again.");
+  document.getElementById("rollLocal").disabled=true;return;
+ }
+ advanceTurn(LS,roll,captured);
+ renderLocal();
+ announceLocalTurn(LS.mustRollAgain?"Roll again!":"Roll the dice.");
+ document.getElementById("rollLocal").disabled=!!LS.isBot[currentColor(LS)];
+ maybeBotTurn();
+}
+function localRoll(){
+ if(!LS||LS.winner||localRolling)return;
+ const gid=LS.id;
+ localRolling=true;
+ document.getElementById("rollLocal").disabled=true;
+ rollAnimation("diceOverlay-local","diceBig-local","dice-local",roll=>{
+  if(!LS||LS.id!==gid)return;
+  LS.dice=roll;
+  const color=currentColor(LS);
+  const movable=computeMovable(LS,roll);
+  LS.movable=movable;localRolling=false;
+  if(!movable.length){
+   LS.log.unshift(`${color} rolled ${roll} — no valid moves.`);
+   advanceTurn(LS,roll,false);
+   renderLocal();announceLocalTurn("Roll the dice.");
+   document.getElementById("rollLocal").disabled=!!LS.isBot[currentColor(LS)];
+   maybeBotTurn();return;
+  }
+  renderLocal();
+  if(LS.isBot[color]){
+   const pick=botChoose(LS,movable,roll);
+   setTimeout(()=>{if(LS&&LS.id===gid)onLocalTokenPick(pick.color,pick.idx,true)},550);
+   return;
+  }
+  if(movable.length===1){
+   setTimeout(()=>{if(LS&&LS.id===gid)onLocalTokenPick(movable[0].color,movable[0].idx,false)},450);
+   return;
+  }
+  say(document.getElementById("status-local"),cap(color)+" rolled "+roll,"Tap a glowing token to move it.");
+ });
+}
+document.getElementById("rollLocal").onclick=()=>{if(LS&&LS.isBot[currentColor(LS)])return;localRoll()};
+document.getElementById("local2p").onclick=()=>startLocalGame(["red","yellow"],false);
+document.getElementById("local4p").onclick=()=>startLocalGame(["red","green","yellow","blue"],false);
+document.getElementById("local2bot").onclick=()=>startLocalGame(["red","yellow"],true);
+document.getElementById("local4bot").onclick=()=>startLocalGame(["red","green","yellow","blue"],true);
+document.getElementById("newLudoLocal").onclick=()=>startLocalGame(LS?LS.activeColors:["red","green","yellow","blue"],LS?LS.lastBotMode:false);
+
+/* ============ ONLINE MODE ============ */
+const onlineBoardEl=document.getElementById("board-online");
+buildBoardSkeleton(onlineBoardEl);
+let lastFlashKey=null;
+let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false,onlineResultHandled=false,onlineRolling=false;
+const ONLINE_SECONDS=30;
+function serializeState(s){return{activeColors:s.activeColors,tokens:s.tokens,turnIdx:s.turnIdx,winner:s.winner,log:s.log.slice(0,30)}}
+function withLoadingWrap(btnId,label,fn){withLoading(document.getElementById(btnId),label,fn)}
+
+withLoadingWrap("createRoom2p","Connecting…",()=>createLudoRoom(["red","yellow"]));
+withLoadingWrap("createRoom4p","Connecting…",()=>createLudoRoom(["red","green","yellow","blue"]));
+async function createLudoRoom(activeColors){
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  const id=code6();onlineRoomRef=doc(db,"ludoRooms",id);
+  const gs=newGameState(activeColors);
+  const seatIds={},seatNames={};
+  activeColors.forEach((c,i)=>{seatIds[c]=i===0?playerId:null;seatNames[c]=i===0?myName:null});
+  const data={...serializeState(gs),seatIds,seatNames,status:"waiting",turnStartedAt:Date.now(),updatedAt:Date.now()};
+  await setDoc(onlineRoomRef,data);
+  document.getElementById("roomCode").value=id;
+  onlineMyColor=activeColors[0];
+  listenLudoOnline(id);
+ }catch(e){console.error(e);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write for ludoRooms in the Firebase console.")}
+}
+withLoadingWrap("joinRoom","Connecting…",async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
+  onlineRoomRef=doc(db,"ludoRooms",id);const s=await getDoc(onlineRoomRef);if(!s.exists()){alert("Room not found.");return}
+  const d=s.data();
+  let mySeat=Object.keys(d.seatIds).find(c=>d.seatIds[c]===playerId);
+  if(!mySeat){
+   mySeat=Object.keys(d.seatIds).find(c=>!d.seatIds[c]);
+   if(!mySeat){alert("Room is full.");return}
+   const seatIds={...d.seatIds,[mySeat]:playerId},seatNames={...d.seatNames,[mySeat]:myName};
+   const allFilled=Object.values(seatIds).every(v=>v);
+   await updateDoc(onlineRoomRef,{seatIds,seatNames,status:allFilled?"playing":"waiting",turnStartedAt:Date.now(),updatedAt:Date.now()});
+  }
+  onlineMyColor=mySeat;
+  listenLudoOnline(id);
+ }catch(e){console.error(e);alert("Join room failed: "+(e.code||e.message))}
+});
+function listenLudoOnline(id){
+ if(onlineUnsub)onlineUnsub();
+ localStorage.setItem("ludoLastRoom",id);checkRejoinAvailable();
+ onlineResultHandled=false;
+ onlineUnsub=onSnapshot(onlineRoomRef,s=>{
+  if(!s.exists()){say(document.getElementById("status-online"),"Room closed","");return}
+  onlineRoom=s.data();
+  renderSeats();
+  document.getElementById("tally-online").innerHTML=tallyHTML(onlineRoom.activeColors,onlineRoom.tokens,c=>cap(c));
+  renderTokens(onlineBoardEl,{activeColors:onlineRoom.activeColors,tokens:onlineRoom.tokens,movable:computeIsMyTurn()?computeMovable(onlineRoom,onlineRoom.dice||0):[]},(color,idx)=>onOnlineTokenPick(color,idx));
+  showDie("dice-online",onlineRoom.dice);
+  if(onlineRoom.dice>0&&onlineRoom.activeColors[onlineRoom.turnIdx]!==onlineMyColor){
+   const fk=onlineRoom.turnStartedAt+"-"+onlineRoom.dice;
+   if(fk!==lastFlashKey){lastFlashKey=fk;flashDice("diceOverlay-online","diceBig-online",onlineRoom.dice)}
+  }
+  document.getElementById("log-online").innerHTML=(onlineRoom.log||[]).slice(0,20).map(l=>`<div>${l}</div>`).join("");
+  const myTurn=computeIsMyTurn();
+  document.getElementById("rollOnline").disabled=!(onlineRoom.status==="playing"&&myTurn&&!(onlineRoom.dice>0&&(onlineRoom.movable||[]).length));
+  if(onlineRoom.winner){
+   say(document.getElementById("status-online"),onlineRoom.winner+" wins!","Game over");
+   if(!onlineResultHandled){onlineResultHandled=true;if(onlineRoom.winner===onlineMyColor)showCelebration(onlineRoom.winner)}
+  }else if(onlineRoom.status==="waiting"){
+   say(document.getElementById("status-online"),"Waiting for players","Share your Player ID or room code: "+id);
+  }else{
+   const cur=onlineRoom.activeColors[onlineRoom.turnIdx];
+   say(document.getElementById("status-online"),myTurn?"Your turn ("+cur+")":(cur+"'s turn"),onlineRoom.dice?"Rolled "+onlineRoom.dice:"Waiting to roll…");
+  }
+  updateOnlineTimerDisplay();
+ },e=>say(document.getElementById("status-online"),"Firebase error",e.message));
+}
+function computeIsMyTurn(){return onlineRoom&&onlineRoom.status==="playing"&&onlineRoom.activeColors[onlineRoom.turnIdx]===onlineMyColor}
+function renderSeats(){
+ if(!onlineRoom)return;
+ document.getElementById("seatsBox").innerHTML=onlineRoom.activeColors.map(c=>{
+  const name=onlineRoom.seatNames[c];
+  return `<div class="player seat-${c}"><span class="tallyItem" style="background:none;padding:0;margin:0">${pawnIcon(c,22)} ${cap(c)}</span><b>${name?name+(onlineRoom.seatIds[c]===playerId?" (You)":""):"Open seat"}</b></div>`;
+ }).join("");
+}
+document.getElementById("rollOnline").onclick=()=>{
+ if(!onlineRoom||onlineRolling||!computeIsMyTurn())return;
+ onlineRolling=true;
+ document.getElementById("rollOnline").disabled=true;
+ rollAnimation("diceOverlay-online","diceBig-online","dice-online",async roll=>{
+  onlineRolling=false;
+  try{
+   await runTransaction(db,async tx=>{
+    const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room no longer exists");
+    const d=snap.data();if(d.activeColors[d.turnIdx]!==onlineMyColor)throw Error("Not your turn");
+    const state={activeColors:d.activeColors,tokens:JSON.parse(JSON.stringify(d.tokens)),turnIdx:d.turnIdx,winner:d.winner,log:d.log||[]};
+    const movable=computeMovable(state,roll);
+    if(!movable.length){
+     state.log.unshift(`${onlineMyColor} rolled ${roll} — no valid moves.`);
+     advanceTurn(state,roll,false);
+     tx.update(onlineRoomRef,{...serializeState(state),dice:0,movable:[],turnStartedAt:Date.now(),updatedAt:Date.now()});
+    }else{
+     tx.update(onlineRoomRef,{dice:roll,movable,turnStartedAt:Date.now(),updatedAt:Date.now()});
+    }
+   });
+  }catch(e){console.error(e);alert(e.message)}
+ });
+};
+async function onOnlineTokenPick(color,idx){
+ if(!onlineRoom||onlineBusy||!computeIsMyTurn())return;
+ const roll=onlineRoom.dice;
+ if(!roll)return;
+ onlineBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room no longer exists");
+   const d=snap.data();if(d.activeColors[d.turnIdx]!==onlineMyColor)throw Error("Not your turn");
+   const state={activeColors:d.activeColors,tokens:JSON.parse(JSON.stringify(d.tokens)),turnIdx:d.turnIdx,winner:d.winner,log:d.log||[]};
+   const stillMovable=computeMovable(state,d.dice).some(m=>m.color===color&&m.idx===idx);
+   if(!stillMovable)throw Error("That move is no longer valid.");
+   const captured=applyMove(state,color,idx,d.dice);
+   if(!state.winner)advanceTurn(state,d.dice,captured);
+   tx.update(onlineRoomRef,{...serializeState(state),dice:0,movable:[],turnStartedAt:Date.now(),updatedAt:Date.now()});
+  });
+  sndMove();
+ }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
+}
+function updateOnlineTimerDisplay(){
+ const el=document.getElementById("timer-online");if(!el)return;
+ if(!onlineRoom||onlineRoom.winner||onlineRoom.status!=="playing"){el.textContent="";return}
+ const elapsed=Math.floor((Date.now()-(onlineRoom.turnStartedAt||Date.now()))/1000);
+ const left=Math.max(0,ONLINE_SECONDS-elapsed);
+ const cur=onlineRoom.activeColors[onlineRoom.turnIdx];
+ el.textContent="⏱ "+(cur===onlineMyColor?"Your":cur+"'s")+" time: "+left+"s";
+ if(left<=0&&cur===onlineMyColor&&!onlineBusy&&!onlineRolling)autoPlayOnline();
+}
+async function autoPlayOnline(){
+ if(!onlineRoom)return;
+ if(!onlineRoom.dice){document.getElementById("rollOnline").click();return}
+ const movable=computeMovable(onlineRoom,onlineRoom.dice);
+ if(movable.length)await onOnlineTokenPick(movable[0].color,movable[0].idx);
+}
+setInterval(updateOnlineTimerDisplay,1000);
+document.getElementById("resignOnline").onclick=()=>{
+ if(onlineUnsub)onlineUnsub();
+ localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();
+ onlineRoom=null;onlineMyColor=null;
+ say(document.getElementById("status-online"),"Left the room","Create or join another room to keep playing.");
+ document.getElementById("seatsBox").innerHTML="";
+};
+
+/* ---- Rejoin ---- */
+function checkRejoinAvailable(){
+ const r=localStorage.getItem("ludoLastRoom");
+ document.getElementById("rejoinBanner-online").classList.toggle("hidden",!r);
+}
+document.getElementById("rejoinBtn-online").onclick=async()=>{
+ const id=localStorage.getItem("ludoLastRoom");if(!id)return;
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  onlineRoomRef=doc(db,"ludoRooms",id);
+  const s=await getDoc(onlineRoomRef);
+  if(!s.exists()){alert("That room no longer exists.");localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();return}
+  const d=s.data();
+  const mySeat=Object.keys(d.seatIds).find(c=>d.seatIds[c]===playerId);
+  if(!mySeat){alert("Couldn't rejoin — you're not seated in this room.");localStorage.removeItem("ludoLastRoom");checkRejoinAvailable();return}
+  onlineMyColor=mySeat;document.getElementById("roomCode").value=id;
+  listenLudoOnline(id);document.getElementById("rejoinBanner-online").classList.add("hidden");
+ }catch(e){alert("Rejoin failed: "+(e.code||e.message))}
+};
+
+/* ---- Player ID / Active players (identity shared with Chess) ---- */
+document.getElementById("myCodeShow").value=myCode;
+document.getElementById("myNameInput").value=myName;
+document.getElementById("copyMyCode").onclick=async()=>{await navigator.clipboard.writeText(myCode)};
+document.getElementById("myNameInput").onchange=async(e)=>{
+ myName=e.target.value.trim()||myName;localStorage.setItem("chessMyName",myName);
+ if(db)await registerPlayer();
+};
+let activePlayersUnsub=null;
+document.getElementById("showActiveBtn").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ document.getElementById("activeModal").classList.remove("hidden");
+ document.getElementById("activeList").innerHTML="Loading…";
+ if(activePlayersUnsub)activePlayersUnsub();
+ const q=query(collection(db,"players"),orderBy("updatedAt","desc"),limit(50));
+ activePlayersUnsub=onSnapshot(q,snap=>{
+  const now=Date.now(),list=document.getElementById("activeList");
+  const rows=snap.docs.filter(d=>{const v=d.data();return d.id!==myCode&&(now-(v.updatedAt||0))<90000});
+  if(!rows.length){list.innerHTML='<div class="muted">No one else is active right now. Share your Player ID or room code with a friend directly.</div>';return}
+  list.innerHTML=rows.map(d=>{
+   const v=d.data();
+   return `<div class="player" style="margin-bottom:8px"><span>🟢 <b>${v.name||d.id}</b><div class="muted" style="font-size:11px">${d.id}</div></span><span class="muted" style="font-size:12px">Share your room code with them</span></div>`;
+  }).join("");
+ },e=>{console.error(e);document.getElementById("activeList").innerHTML='<div class="muted">Could not load active players: '+(e.code||e.message)+'</div>'});
+};
+document.getElementById("closeActiveModal").onclick=()=>{
+ document.getElementById("activeModal").classList.add("hidden");
+ if(activePlayersUnsub){activePlayersUnsub();activePlayersUnsub=null}
+};
+
+/* ============ Full screen ============ */
+function setupFullscreen(boardElId,btnId){
+ const btn=document.getElementById(btnId),boardEl=document.getElementById(boardElId);
+ if(!btn||!boardEl)return;
+ const target=boardEl.closest(".boardCard");
+ btn.onclick=()=>{
+  const isFs=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!isFs){
+   const req=target.requestFullscreen||target.webkitRequestFullscreen;
+   if(!req){alert("Full screen isn't supported on this browser/device.");return}
+   req.call(target).catch(e=>alert("Couldn't enter full screen: "+e.message));
+  }else{
+   (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+ };
+ const onChange=()=>{
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  btn.textContent=(fsEl===target)?"✕ Exit Full Screen":"⛶ Full Screen";
+ };
+ document.addEventListener("fullscreenchange",onChange);
+ document.addEventListener("webkitfullscreenchange",onChange);
+}
+setupFullscreen("board-local","fullscreen-local");
+setupFullscreen("board-online","fullscreen-online");
+
+/* ============ NAV ============ */
+function showScreen(name){
+ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById("scr"+name).classList.add("active");
+ document.getElementById("nav"+name).classList.add("active");
+}
+document.getElementById("navLocal").onclick=()=>showScreen("Local");
+document.getElementById("navOnline").onclick=()=>showScreen("Online");
+
+/* ============ INIT ============ */
+startLocalGame(["red","green","yellow","blue"]);
+document.getElementById("net").textContent="Firebase: not connected yet";
+loadFirebase();
+checkRejoinAvailable();
+@@LUDO_SCRIPT_CLOSE@@
+</body>
+</html>
+
+</script>
+
+<div id="activeModal" class="hidden" style="position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px">
+ <div class="card panel" style="max-width:440px;width:100%;max-height:75vh;overflow:auto">
+  <div class="top" style="margin-bottom:10px"><b style="font-size:18px">👥 Active Players</b><button id="closeActiveModal">✕</button></div>
+  <div id="activeList" class="muted">Loading…</div>
+ </div>
+</div>
+
+<script type="module">
+const firebaseConfig={
+  apiKey:"AIzaSyBPwEOdI8WwPKZVCJhvyANp5MPQKmAG79w",
+  authDomain:"chess-dab2c.firebaseapp.com",
+  projectId:"chess-dab2c",
+  storageBucket:"chess-dab2c.firebasestorage.app",
+  messagingSenderId:"639996000069",
+  appId:"1:639996000069:web:716d98a89d0fbb3e10702c"
+};
+let db=null,doc,getDoc,setDoc,updateDoc,onSnapshot,runTransaction,collection,query,where,addDoc,deleteDoc,orderBy,limit,getDocs,increment;
+let playerId=localStorage.getItem("chessPlayerId");
+if(!playerId){playerId=crypto.randomUUID();localStorage.setItem("chessPlayerId",playerId)}
+let myCode=localStorage.getItem("chessMyCode");
+if(!myCode){myCode=code();localStorage.setItem("chessMyCode",myCode)}
+let myName=localStorage.getItem("chessMyName")||("Player-"+myCode.slice(0,3));
+let heartbeatInterval=null;
+
+let firebaseLoadPromise=null;
+function loadFirebase(){
+ if(firebaseLoadPromise)return firebaseLoadPromise;
+ firebaseLoadPromise=(async()=>{
+  try{
+   document.getElementById("net").textContent="Firebase: connecting…";
+   const appMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js");
+   const fsMod=await import("https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js");
+   const app=appMod.initializeApp(firebaseConfig);
+   db=fsMod.getFirestore(app);
+   doc=fsMod.doc;getDoc=fsMod.getDoc;setDoc=fsMod.setDoc;updateDoc=fsMod.updateDoc;onSnapshot=fsMod.onSnapshot;runTransaction=fsMod.runTransaction;
+   collection=fsMod.collection;query=fsMod.query;where=fsMod.where;addDoc=fsMod.addDoc;deleteDoc=fsMod.deleteDoc;orderBy=fsMod.orderBy;limit=fsMod.limit;getDocs=fsMod.getDocs;increment=fsMod.increment;
+   document.getElementById("net").textContent="Firebase: connected";
+   registerPlayer();
+   listenIncomingInvites();
+   if(!heartbeatInterval)heartbeatInterval=setInterval(registerPlayer,25000);
+   return true;
+  }catch(e){
+   console.error(e);
+   document.getElementById("net").textContent="Firebase: unavailable (Online/Tournament disabled)";
+   return false;
+  }
+ })();
+ return firebaseLoadPromise;
+}
+async function registerPlayer(){
+ try{await setDoc(doc(db,"players",myCode),{ownerId:playerId,name:myName,updatedAt:Date.now()},{merge:true})}catch(e){console.error(e)}
+}
+/* Wrap a button's onclick so it visibly shows "Connecting…"/a busy state instead of silently hanging
+   while Firebase's SDK loads or a request is in flight (this used to look like a frozen 5-10s wait). */
+function withLoading(btn,busyLabel,fn){
+ const original=btn.textContent;
+ btn.onclick=async()=>{
+  if(btn.disabled)return;
+  btn.disabled=true;btn.textContent=busyLabel;
+  try{await fn()}finally{btn.disabled=false;btn.textContent=original}
+ };
+}
+
+/* ---- Victory celebration, win/loss stats, and live rank ---- */
+function launchConfetti(n){
+ const colors=["#f43f5e","#facc15","#22c55e","#38bdf8","#a78bfa","#fb923c"];
+ for(let i=0;i<n;i++){
+  const el=document.createElement("div");
+  el.className="confetti-piece";
+  el.style.left=Math.random()*100+"vw";
+  el.style.background=colors[Math.floor(Math.random()*colors.length)];
+  el.style.animationDuration=(2.2+Math.random()*1.6)+"s";
+  el.style.animationDelay=(Math.random()*0.6)+"s";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),4200);
+ }
+}
+function showCelebration(result,rank,total){
+ const wrap=document.createElement("div");wrap.className="celebrate";
+ let title,sub;
+ if(result==="win"){title="🏆 Victory!";sub=rank?("Your rank: #"+rank+(total?(" of "+total+" players"):"")):"Recording your rank…";launchConfetti(140)}
+ else if(result==="loss"){title="Good game!";sub="Better luck next time."}
+ else{title="🤝 Draw";sub="A hard-fought draw."}
+ wrap.innerHTML=`<div class="celebrate-card"><div class="celebrate-title">${title}</div><div class="celebrate-sub">${sub}</div><button class="celebrate-close primary">Continue</button></div>`;
+ document.body.appendChild(wrap);
+ wrap.querySelector(".celebrate-close").onclick=()=>wrap.remove();
+ wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
+ setTimeout(()=>{if(document.body.contains(wrap))wrap.remove()},10000);
+}
+async function recordGameResult(result){
+ try{
+  const field=result==="win"?"wins":result==="loss"?"losses":"draws";
+  await updateDoc(doc(db,"players",myCode),{[field]:increment(1)});
+  let rank=null,total=null;
+  if(result==="win"){
+   const snap=await getDocs(query(collection(db,"players"),orderBy("wins","desc"),limit(200)));
+   total=snap.size;
+   const idx=snap.docs.findIndex(d=>d.id===myCode);
+   rank=idx>=0?idx+1:null;
+  }
+  showCelebration(result,rank,total);
+ }catch(e){console.error(e);showCelebration(result,null,null)}
+}
+
+/* ============ CORE CHESS ENGINE (shared by all modes) ============ */
+const PIECES={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+const VAL={P:100,N:320,B:330,R:500,Q:900,K:20000},FILES="abcdefgh";
+const PST_P=[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0];
+const PST_N=[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50];
+
+function initialBoard(){return [["r","n","b","q","k","b","n","r"],["p","p","p","p","p","p","p","p"],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],["P","P","P","P","P","P","P","P"],["R","N","B","Q","K","B","N","R"]]}
+/* Firestore does not support nested arrays, so the 8x8 board (array of arrays) must be
+   flattened to a single 1D array of 64 cells before writing, and rebuilt into 2D on read. */
+function flattenBoard(b){return b.flat()}
+function unflattenBoard(flat){let b=[];for(let r=0;r<8;r++)b.push(flat.slice(r*8,r*8+8));return b}
+function pcolor(p){return p&&p===p.toUpperCase()?"w":"b"}
+function opp(c){return c==="w"?"b":"w"}
+function ib(r,c){return r>=0&&r<8&&c>=0&&c<8}
+function king(b,c){let k=c==="w"?"K":"k";for(let r=0;r<8;r++)for(let x=0;x<8;x++)if(b[r][x]===k)return[r,x];return null}
+function attacked(b,r,c,by){
+ let p=by==="w"?"P":"p",pr=r+(by==="w"?1:-1);
+ for(let dc of[-1,1])if(ib(pr,c+dc)&&b[pr][c+dc]===p)return true;
+ p=by==="w"?"N":"n";
+ for(let[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]])if(ib(r+dr,c+dc)&&b[r+dr][c+dc]===p)return true;
+ p=by==="w"?"K":"k";
+ for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if((dr||dc)&&ib(r+dr,c+dc)&&b[r+dr][c+dc]===p)return true;
+ for(let[dr,dc,type]of[[1,0,"R"],[-1,0,"R"],[0,1,"R"],[0,-1,"R"],[1,1,"B"],[1,-1,"B"],[-1,1,"B"],[-1,-1,"B"]]){
+  let rr=r+dr,cc=c+dc;
+  while(ib(rr,cc)){let q=b[rr][cc];if(q){if(pcolor(q)===by&&(q.toUpperCase()===type||q.toUpperCase()==="Q"))return true;break}rr+=dr;cc+=dc}
+ }
+ return false
+}
+function inCheck(b,c){let k=king(b,c);return !k||attacked(b,k[0],k[1],opp(c))}
+function pseudo(b,c,cast,epSq){
+ const out=[],add=(fr,fc,tr,tc,e={})=>{if(!ib(tr,tc))return;let t=b[tr][tc];if(t&&pcolor(t)===c)return;out.push({fr,fc,tr,tc,piece:b[fr][fc],captured:t,...e})};
+ for(let r=0;r<8;r++)for(let x=0;x<8;x++){
+  let p=b[r][x];if(!p||pcolor(p)!==c)continue;let u=p.toUpperCase();
+  if(u==="P"){
+   let d=c==="w"?-1:1,start=c==="w"?6:1,pr=c==="w"?0:7;
+   if(ib(r+d,x)&&!b[r+d][x]){
+    if(r+d===pr)for(let q of["Q","R","B","N"])out.push({fr:r,fc:x,tr:r+d,tc:x,piece:p,captured:null,promotion:c==="w"?q:q.toLowerCase()});
+    else add(r,x,r+d,x);
+    if(r===start&&!b[r+2*d][x])add(r,x,r+2*d,x,{double:true})
+   }
+   for(let dc of[-1,1]){
+    let tr=r+d,tc=x+dc;if(!ib(tr,tc))continue;
+    if(b[tr][tc]&&pcolor(b[tr][tc])!==c){
+     if(tr===pr)for(let q of["Q","R","B","N"])out.push({fr:r,fc:x,tr,tc,piece:p,captured:b[tr][tc],promotion:c==="w"?q:q.toLowerCase()});
+     else add(r,x,tr,tc)
+    }
+    if(epSq&&epSq[0]===tr&&epSq[1]===tc)out.push({fr:r,fc:x,tr,tc,piece:p,captured:b[r][tc],ep:true})
+   }
+  }else if(u==="N"){
+   for(let[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]])add(r,x,r+dr,x+dc)
+  }else if(u==="K"){
+   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if(dr||dc)add(r,x,r+dr,x+dc);
+   let home=c==="w"?7:0;
+   if(r===home&&x===4&&!inCheck(b,c)){
+    let k=c==="w"?cast.wK:cast.bK,q=c==="w"?cast.wQ:cast.bQ;
+    if(k&&!b[home][5]&&!b[home][6]&&b[home][7]===(c==="w"?"R":"r")&&!attacked(b,home,5,opp(c))&&!attacked(b,home,6,opp(c)))out.push({fr:r,fc:x,tr:home,tc:6,piece:p,captured:null,castle:"K"});
+    if(q&&!b[home][1]&&!b[home][2]&&!b[home][3]&&b[home][0]===(c==="w"?"R":"r")&&!attacked(b,home,3,opp(c))&&!attacked(b,home,2,opp(c)))out.push({fr:r,fc:x,tr:home,tc:2,piece:p,captured:null,castle:"Q"})
+   }
+  }else{
+   let ds=u==="R"?[[1,0],[-1,0],[0,1],[0,-1]]:u==="B"?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+   for(let[dr,dc]of ds){
+    let rr=r+dr,cc=x+dc;
+    while(ib(rr,cc)){let t=b[rr][cc];if(!t)add(r,x,rr,cc);else{if(pcolor(t)!==c)add(r,x,rr,cc);break}rr+=dr;cc+=dc}
+   }
+  }
+ }
+ return out
+}
+function applyMove(b,m,cast,epSq){
+ let nb=b.map(a=>a.slice()),nc={...cast},nep=null;
+ nb[m.tr][m.tc]=m.promotion||m.piece;nb[m.fr][m.fc]=null;
+ if(m.ep)nb[m.fr][m.tc]=null;
+ if(m.castle==="K"){let home=m.fr;nb[home][5]=nb[home][7];nb[home][7]=null}
+ if(m.castle==="Q"){let home=m.fr;nb[home][3]=nb[home][0];nb[home][0]=null}
+ if(m.piece.toUpperCase()==="K"){if(pcolor(m.piece)==="w"){nc.wK=false;nc.wQ=false}else{nc.bK=false;nc.bQ=false}}
+ if(m.piece.toUpperCase()==="R"){
+  if(m.fr===7&&m.fc===0)nc.wQ=false;if(m.fr===7&&m.fc===7)nc.wK=false;
+  if(m.fr===0&&m.fc===0)nc.bQ=false;if(m.fr===0&&m.fc===7)nc.bK=false;
+ }
+ if(m.captured&&m.captured.toUpperCase()==="R"){
+  if(m.tr===7&&m.tc===0)nc.wQ=false;if(m.tr===7&&m.tc===7)nc.wK=false;
+  if(m.tr===0&&m.tc===0)nc.bQ=false;if(m.tr===0&&m.tc===7)nc.bK=false;
+ }
+ if(m.double)nep=[(m.fr+m.tr)/2,m.fc];
+ return{nb,nc,nep}
+}
+function legalMoves(b,c,cast,epSq){
+ return pseudo(b,c,cast,epSq).filter(m=>{let{nb}=applyMove(b,m,cast,epSq);return !inCheck(nb,c)})
+}
+function notation(b,m,cast,epSq){
+ let u=m.piece.toUpperCase(),to=FILES[m.tc]+(8-m.tr);
+ if(m.castle==="K")return "O-O";
+ if(m.castle==="Q")return "O-O-O";
+ let s=u==="P"?(m.captured?FILES[m.fc]+"x"+to:to):(u+(m.captured?"x":"")+to);
+ if(m.promotion)s+="="+m.promotion.toUpperCase();
+ let{nb}=applyMove(b,m,cast,epSq),nc2=opp(pcolor(m.piece));
+ if(inCheck(nb,nc2)){let hasMoves=legalMoves(nb,nc2,cast,null).length>0;s+=hasMoves?"+":"#"}
+ return s
+}
+function evalBoard(b){
+ let s=0;
+ for(let r=0;r<8;r++)for(let x=0;x<8;x++){
+  let p=b[r][x];if(!p)continue;
+  let u=p.toUpperCase(),c=pcolor(p),sign=c==="w"?1:-1;
+  s+=sign*VAL[u];
+  let idx=c==="w"?r*8+x:(7-r)*8+x;
+  if(u==="P")s+=sign*PST_P[idx];
+  if(u==="N")s+=sign*PST_N[idx];
+ }
+ return s
+}
+function orderMoves(moves){return moves.length>1?moves.slice().sort((a,b2)=>(b2.captured?VAL[b2.captured.toUpperCase()]:0)-(a.captured?VAL[a.captured.toUpperCase()]:0)):moves}
+function minimax(b,c,cast,epSq,depth,alpha,beta){
+ let moves=orderMoves(legalMoves(b,c,cast,epSq));
+ if(depth===0||!moves.length){
+  if(!moves.length){if(inCheck(b,c))return c==="w"?-99999:99999;return 0}
+  return evalBoard(b);
+ }
+ if(c==="w"){
+  let v=-Infinity;
+  for(let m of moves){let{nb,nc,nep}=applyMove(b,m,cast,epSq);v=Math.max(v,minimax(nb,"b",nc,nep,depth-1,alpha,beta));alpha=Math.max(alpha,v);if(beta<=alpha)break}
+  return v
+ }else{
+  let v=Infinity;
+  for(let m of moves){let{nb,nc,nep}=applyMove(b,m,cast,epSq);v=Math.min(v,minimax(nb,"w",nc,nep,depth-1,alpha,beta));beta=Math.min(beta,v);if(beta<=alpha)break}
+  return v
+ }
+}
+function bestMove(board,turn,castling,ep,depth){
+ let moves=legalMoves(board,turn,castling,ep);
+ if(!moves.length)return null;
+ let best=null,bestScore=turn==="w"?-Infinity:Infinity;
+ let order=orderMoves(moves);
+ for(let m of order){
+  let{nb,nc,nep}=applyMove(board,m,castling,ep);
+  let score=minimax(nb,opp(turn),nc,nep,depth-1,-Infinity,Infinity);
+  if(turn==="w"?score>bestScore:score<bestScore){bestScore=score;best=m}
+ }
+ return best||moves[0]
+}
+
+/* ============ REUSABLE BOARD RENDERER ============ */
+/* ---- Sound engine (no external files) ---- */
+let audioCtx=null,soundMuted=localStorage.getItem("chessMuted")==="1";
+function beep(freq,dur,type,vol){
+ if(soundMuted)return;
+ try{
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.value=vol;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+  o.stop(audioCtx.currentTime+dur);
+ }catch(e){}
+}
+function playMoveSound(capture,check){
+ if(check)beep(880,.2,"square",.1);
+ else if(capture)beep(200,.14,"sawtooth",.14);
+ else beep(440,.09,"sine",.09);
+}
+document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+document.getElementById("muteBtn").onclick=()=>{
+ soundMuted=!soundMuted;localStorage.setItem("chessMuted",soundMuted?"1":"0");
+ document.getElementById("muteBtn").textContent=soundMuted?"🔇":"🔊";
+};
+
+/* ---- 3D board view toggle ---- */
+function setup3D(boardElId,btnId){
+ const btn=document.getElementById(btnId),boardEl=document.getElementById(boardElId);
+ if(!btn||!boardEl)return;
+ const key="chess3D-"+boardElId;
+ let curX=52,curY=0,targX=52,targY=0,rafId=null;
+ function tick(){
+  curX+=(targX-curX)*0.08;curY+=(targY-curY)*0.08;
+  boardEl.style.setProperty("--tiltX",curX.toFixed(2)+"deg");
+  boardEl.style.setProperty("--tiltY",curY.toFixed(2)+"deg");
+  if(Math.abs(targX-curX)>0.05||Math.abs(targY-curY)>0.05)rafId=requestAnimationFrame(tick);
+  else rafId=null;
+ }
+ function kick(){if(!rafId)rafId=requestAnimationFrame(tick)}
+ if(localStorage.getItem(key)==="1"){boardEl.classList.add("board3d");btn.textContent="🧊 2D View"}
+ btn.onclick=()=>{
+  const on=boardEl.classList.toggle("board3d");
+  btn.textContent=on?"🧊 2D View":"🧊 3D View";
+  localStorage.setItem(key,on?"1":"0");
+  if(!on){targX=52;targY=0;curX=52;curY=0;boardEl.style.removeProperty("--tiltX");boardEl.style.removeProperty("--tiltY")}
+ };
+ // Gentle, damped parallax — small tilt range and eased toward the pointer so the board stays calm and stable.
+ const boardCard=boardEl.closest(".boardCard");
+ function steer(clientX,clientY){
+  if(!boardEl.classList.contains("board3d"))return;
+  const rect=boardCard.getBoundingClientRect();
+  const px=Math.min(1,Math.max(0,(clientX-rect.left)/rect.width)),py=Math.min(1,Math.max(0,(clientY-rect.top)/rect.height));
+  targX=50+(0.5-py)*8;targY=(px-0.5)*10;
+  kick();
+ }
+ if(boardCard){
+  boardCard.addEventListener("mousemove",e=>steer(e.clientX,e.clientY));
+  boardCard.addEventListener("mouseleave",()=>{targX=52;targY=0;kick()});
+  boardCard.addEventListener("touchmove",e=>{if(e.touches[0])steer(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+ }
+}
+setup3D("board-local","threeD-local");
+setup3D("board-online","threeD-online");
+setup3D("board-tourn","threeD-tourn");
+
+function makeBoardUI(elId,statusId,movesId,capWId,capBId){
+ return {
+  el:document.getElementById(elId),statusEl:statusId?document.getElementById(statusId):null,
+  movesEl:movesId?document.getElementById(movesId):null,capWEl:capWId?document.getElementById(capWId):null,capBEl:capBId?document.getElementById(capBId):null,
+  _lastKey:null
+ }
+}
+function say(statusEl,a,b){if(statusEl)statusEl.innerHTML="<b>"+a+"</b><div>"+(b||"")+"</div>"}
+function renderBoard(ui,state){
+ const el=ui.el;if(!state.board)return;
+ const rs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7],cs=state.flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
+ const riOf=[],ciOf=[];for(let i=0;i<8;i++){riOf[rs[i]]=i;ciOf[cs[i]]=i}
+ const mvKey=state.lastMove?state.lastMove.fr+","+state.lastMove.fc+","+state.lastMove.tr+","+state.lastMove.tc+","+(state.history?state.history.length:0):null;
+ const isNewMove=state.lastMove&&mvKey!==ui._lastKey&&ui._lastKey!==undefined;
+ el.innerHTML="";
+ let movedPieceEl=null;
+ for(let ri=0;ri<8;ri++)for(let ci=0;ci<8;ci++){
+  let r=rs[ri],c=cs[ci],s=document.createElement("div");
+  s.className="sq "+((r+c)%2?"dark":"light");
+  if(state.selected&&state.selected[0]===r&&state.selected[1]===c)s.classList.add("sel");
+  let lm=state.legal.find(m=>m.tr===r&&m.tc===c);if(lm)s.classList.add(state.board[r][c]?"capture":"move");
+  let k=king(state.board,state.turn);if(k&&k[0]===r&&k[1]===c&&inCheck(state.board,state.turn))s.classList.add("check");
+  if(state.hint&&((state.hint.fr===r&&state.hint.fc===c)||(state.hint.tr===r&&state.hint.tc===c)))s.classList.add("hint");
+  if(state.lastMove&&((state.lastMove.fr===r&&state.lastMove.fc===c)||(state.lastMove.tr===r&&state.lastMove.tc===c)))s.classList.add("lastmove");
+  if(state.board[r][c]){
+   let z=document.createElement("span");z.className="piece "+(pcolor(state.board[r][c])==="w"?"wp":"bp");z.textContent=PIECES[state.board[r][c]];s.appendChild(z);
+   if(isNewMove&&state.lastMove.tr===r&&state.lastMove.tc===c)movedPieceEl=z;
+  }
+  if(ci===0){let z=document.createElement("span");z.className="coord rank";z.textContent=8-r;s.appendChild(z)}
+  if(ri===7){let z=document.createElement("span");z.className="coord file";z.textContent=FILES[c];s.appendChild(z)}
+  s.onclick=()=>state.onClick(r,c);
+  el.appendChild(s)
+ }
+ // Real sliding animation: place the piece that just moved back at its origin square (no transition),
+ // then release it to its true square on the next frame so it visibly glides across the board.
+ if(movedPieceEl&&el.clientWidth>0){
+  const cell=el.clientWidth/8,cellH=el.clientHeight/8;
+  const dx=(ciOf[state.lastMove.fc]-ciOf[state.lastMove.tc])*cell;
+  const dy=(riOf[state.lastMove.fr]-riOf[state.lastMove.tr])*cellH;
+  movedPieceEl.style.transition="none";
+  movedPieceEl.style.transform="translate("+dx+"px,"+dy+"px)";
+  requestAnimationFrame(()=>{
+   requestAnimationFrame(()=>{
+    movedPieceEl.classList.add("sliding");
+    movedPieceEl.style.transform="";
+    setTimeout(()=>{movedPieceEl.classList.remove("sliding");movedPieceEl.style.transition=""},340);
+   });
+  });
+ }
+ if(ui.movesEl){
+  ui.movesEl.innerHTML=(state.history||[]).map((x,i)=>i%2===0?`<div class="row"><span>${i/2+1}.</span><span>${x}</span><span>${state.history[i+1]||""}</span></div>`:"").join("");
+  ui.movesEl.scrollTop=ui.movesEl.scrollHeight;
+ }
+ if(ui.capWEl)ui.capWEl.innerHTML=(state.captured?.b||[]).map(p=>PIECES[p]).join(" ");
+ if(ui.capBEl)ui.capBEl.innerHTML=(state.captured?.w||[]).map(p=>PIECES[p]).join(" ");
+ if(mvKey!==null){
+  if(isNewMove)playMoveSound(!!state.lastMove.captured,king(state.board,state.turn)&&inCheck(state.board,state.turn));
+  ui._lastKey=mvKey;
+ }
+}
+
+
+/* ============ QUICK PLAY (LOCAL) ============ */
+const localUI=makeBoardUI("board-local","status-local","moves-local","capWhite-local","capBlack-local");
+let L={};
+function localHumanColor(){let m=document.getElementById("mode").value;if(m==="pvp")return null;return m==="cpu-b"?"w":"b"}
+function newLocalGame(){
+ L={board:initialBoard(),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],captured:{w:[],b:[]},selected:null,legal:[],flipped:false,hint:null,gameOver:false,onClick:localClick};
+ say(localUI.statusEl,"White to move","New game");
+ renderBoard(localUI,L);
+ maybeComputerMove();
+}
+function localClick(r,c){
+ if(L.gameOver)return;
+ let hc=localHumanColor();
+ if(hc!==null&&L.turn!==hc)return;
+ L.hint=null;
+ let p=L.board[r][c],m=L.legal.find(x=>x.tr===r&&x.tc===c);
+ if(L.selected&&m){makeLocalMove(m);return}
+ if(p&&pcolor(p)===L.turn){L.selected=[r,c];L.legal=legalMoves(L.board,L.turn,L.castling,L.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(localUI,L)}
+ else{L.selected=null;L.legal=[];renderBoard(localUI,L)}
+}
+function makeLocalMove(m){
+ let note=notation(L.board,m,L.castling,L.ep);
+ let{nb,nc,nep}=applyMove(L.board,m,L.castling,L.ep);
+ if(m.captured)L.captured[pcolor(m.captured)].push(m.captured);
+ L.history.push(note);L.board=nb;L.castling=nc;L.ep=nep;L.turn=opp(L.turn);L.selected=null;L.legal=[];L.hint=null;L.lastMove=m;
+ let moves=legalMoves(L.board,L.turn,L.castling,L.ep);
+ if(!moves.length){L.gameOver=true;if(inCheck(L.board,L.turn))say(localUI.statusEl,L.turn==="w"?"Black wins":"White wins","Checkmate");else say(localUI.statusEl,"Draw","Stalemate")}
+ else if(inCheck(L.board,L.turn))say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","Check!");
+ else say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","");
+ renderBoard(localUI,L);
+ maybeComputerMove();
+}
+function maybeComputerMove(){
+ if(L.gameOver)return;
+ let hc=localHumanColor();
+ if(hc===null||L.turn===hc)return;
+ setTimeout(()=>{
+  let diff=parseInt(document.getElementById("diff").value);
+  let depth=diff===1?1:diff===2?2:3;
+  let moves=legalMoves(L.board,L.turn,L.castling,L.ep);
+  if(!moves.length)return;
+  let m=(diff===1&&Math.random()<0.35)?moves[Math.floor(Math.random()*moves.length)]:bestMove(L.board,L.turn,L.castling,L.ep,depth);
+  if(m)makeLocalMove(m);
+ },150);
+}
+document.getElementById("newgame").onclick=newLocalGame;
+document.getElementById("flip-local").onclick=()=>{L.flipped=!L.flipped;renderBoard(localUI,L)};
+document.getElementById("mode").onchange=newLocalGame;
+document.getElementById("hint-local").onclick=()=>{
+ if(L.gameOver)return;
+ let hc=localHumanColor();if(hc!==null&&L.turn!==hc)return;
+ let m=bestMove(L.board,L.turn,L.castling,L.ep,2);
+ if(m){L.hint=m;renderBoard(localUI,L);say(localUI.statusEl,(L.turn==="w"?"White":"Black")+" to move","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
+document.getElementById("undo").onclick=()=>{
+ alert("Undo isn't available mid-game in this version — start New Game to reset.");
+};
+
+/* ============ ONLINE 1v1 ============ */
+const ONLINE_SECONDS=30;
+const onlineUI=makeBoardUI("board-online","status-online","moves-online",null,null);
+let O={board:null,turn:"w",castling:null,ep:null,history:[],selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:onlineClick};
+let onlineRoomRef=null,onlineUnsub=null,onlineRoom=null,onlineMyColor=null,onlineBusy=false;
+let onlineTurnKey=null,onlineAutoMoved=false,myInviteUnsub=null,incomingUnsub=null,onlineResultHandled=false;
+function onlineClick(r,c){
+ if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor||onlineBusy)return;
+ O.hint=null;
+ let p=O.board[r][c],m=O.legal.find(x=>x.tr===r&&x.tc===c);
+ if(O.selected&&m){optimisticOnlineMove(m);return}
+ if(p&&pcolor(p)===onlineMyColor){O.selected=[r,c];O.legal=legalMoves(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(onlineUI,O)}
+ else{O.selected=null;O.legal=[];renderBoard(onlineUI,O)}
+}
+function optimisticOnlineMove(m){
+ // Render the move instantly (don't wait for the Firestore round-trip) so play feels fast; the
+ // background write in sendOnlineMove() is still the source of truth and will correct any conflict.
+ const ap=applyMove(O.board,m,onlineRoom.castling,onlineRoom.ep);
+ O.board=ap.nb;O.selected=null;O.legal=[];O.hint=null;O.lastMove=m;
+ renderBoard(onlineUI,O);
+ say(onlineUI.statusEl,"Opponent's turn","Move sent…");
+ sendOnlineMove(m);
+}
+async function sendOnlineMove(m){
+ if(onlineBusy)return;onlineBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(onlineRoomRef);if(!snap.exists())throw Error("Room does not exist");
+   const d=snap.data();if(d.turn!==onlineMyColor)throw Error("Not your turn");
+   const b=unflattenBoard(d.board),cast={...d.castling},ep=d.ep;
+   const lm=legalMoves(b,onlineMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
+   const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
+   let hist=[...(d.history||[]),note],next=opp(onlineMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
+   if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?onlineMyColor:"draw"}
+   tx.update(onlineRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,lastMove:{fr:lm.fr,fc:lm.fc,tr:lm.tr,tc:lm.tc,captured:!!lm.captured},turnStartedAt:Date.now(),updatedAt:Date.now()});
+  });
+ }catch(e){console.error(e);alert(e.message)}finally{onlineBusy=false}
+}
+function code(){let s="";for(let i=0;i<6;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+function configReady(){return firebaseConfig.apiKey!=="YOUR_API_KEY"}
+withLoading(document.getElementById("createRoom"),"Connecting…",async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const id=code();onlineRoomRef=doc(db,"chessRooms",id);
+  const init={board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:playerId,whiteName:myName,blackId:null,blackName:null,status:"waiting",winner:null,turnStartedAt:Date.now(),updatedAt:Date.now()};
+  await setDoc(onlineRoomRef,init);document.getElementById("roomCode").value=id;onlineMyColor="w";listenOnline(id)
+ }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Create room failed: "+(e.code||e.message)+"\n\nCheck Firestore is enabled and rules allow read/write in the Firebase console.")}
+});
+withLoading(document.getElementById("joinRoom"),"Connecting…",async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const id=document.getElementById("roomCode").value.trim().toUpperCase();if(id.length!==6){alert("Enter a 6-character room code.");return}
+  onlineRoomRef=doc(db,"chessRooms",id);let s=await getDoc(onlineRoomRef);if(!s.exists()){alert("Room not found.");return}
+  let d=s.data();if(d.blackId&&d.blackId!==playerId){alert("Room already has two players.");return}
+  if(d.whiteId===playerId)onlineMyColor="w";else{await updateDoc(onlineRoomRef,{blackId:playerId,blackName:myName,status:"playing",turnStartedAt:Date.now(),updatedAt:Date.now()});onlineMyColor="b"}
+  listenOnline(id)
+ }catch(e){console.error(e);say(onlineUI.statusEl,"Firebase error",e.code||e.message);alert("Join room failed: "+(e.code||e.message))}
+});
+function listenOnline(id){
+ if(onlineUnsub)onlineUnsub();document.getElementById("roomCode").value=id;
+ localStorage.setItem("chessLastRoom",id);checkRejoinAvailable();
+ onlineResultHandled=false;
+ onlineUnsub=onSnapshot(onlineRoomRef,s=>{
+  if(!s.exists()){say(onlineUI.statusEl,"Room closed","");return}
+  onlineRoom=s.data();O.board=unflattenBoard(onlineRoom.board);O.turn=onlineRoom.turn;O.history=onlineRoom.history||[];O.selected=null;O.legal=[];O.lastMove=onlineRoom.lastMove||O.lastMove;
+  const turnKey=onlineRoom.turn+"-"+(onlineRoom.history?onlineRoom.history.length:0);
+  if(turnKey!==onlineTurnKey){onlineTurnKey=turnKey;onlineAutoMoved=false}
+  document.querySelector("#online-white b").textContent=(onlineRoom.whiteName||"Waiting")+(onlineMyColor==="w"?" (You)":"");
+  document.querySelector("#online-black b").textContent=(onlineRoom.blackName||"Waiting")+(onlineMyColor==="b"?" (You)":"");
+  if(onlineRoom.winner){
+   say(onlineUI.statusEl,onlineRoom.winner==="draw"?"Draw":onlineRoom.winner==="w"?"White wins":"Black wins","Game over");
+   if(!onlineResultHandled&&onlineMyColor){
+    onlineResultHandled=true;
+    recordGameResult(onlineRoom.winner==="draw"?"draw":(onlineRoom.winner===onlineMyColor?"win":"loss"));
+   }
+  }
+  else if(onlineRoom.status==="waiting")say(onlineUI.statusEl,"Waiting for opponent","Send your Player ID or room code: "+id);
+  else say(onlineUI.statusEl,onlineRoom.turn===onlineMyColor?"Your turn":"Opponent's turn",onlineRoom.turn==="w"?"White to move":"Black to move");
+  renderBoard(onlineUI,O);
+  updateOnlineTimerDisplay();
+ },e=>{say(onlineUI.statusEl,"Firebase error",e.message)});
+}
+function updateOnlineTimerDisplay(){
+ // Time limit disabled — players can take as long as they like.
+ const el=document.getElementById("timer-online");if(el)el.textContent="";
+}
+async function autoPlayOnline(){
+ let m=bestMove(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep,1);
+ if(!m){let ms=legalMoves(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep);if(ms.length)m=ms[Math.floor(Math.random()*ms.length)]}
+ if(m)await sendOnlineMove(m);
+}
+setInterval(()=>{updateOnlineTimerDisplay();updateTournTimerDisplay()},1000);
+document.getElementById("flip-online").onclick=()=>{O.flipped=!O.flipped;renderBoard(onlineUI,O)};
+document.getElementById("copyRoom").onclick=async()=>{let v=document.getElementById("roomCode").value;if(v)await navigator.clipboard.writeText(v)};
+document.getElementById("resignOnline").onclick=async()=>{if(!db)return;if(onlineRoom?.status==="playing"&&onlineMyColor){if(confirm("Resign this game?")){await updateDoc(onlineRoomRef,{status:"finished",winner:opp(onlineMyColor),updatedAt:Date.now()});localStorage.removeItem("chessLastRoom");checkRejoinAvailable()}}};
+document.getElementById("hint-online").onclick=()=>{
+ if(!onlineRoom||onlineRoom.status!=="playing"||onlineRoom.turn!==onlineMyColor)return;
+ let m=bestMove(O.board,onlineMyColor,onlineRoom.castling,onlineRoom.ep,2);
+ if(m){O.hint=m;renderBoard(onlineUI,O);say(onlineUI.statusEl,"Your turn","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
+
+/* ---- Rejoin (reconnect after crash/back/refresh) ---- */
+function checkRejoinAvailable(){
+ const r=localStorage.getItem("chessLastRoom");
+ document.getElementById("rejoinBanner-online").classList.toggle("hidden",!r);
+ const t=localStorage.getItem("chessLastTournId");
+ document.getElementById("rejoinBanner-tourn").classList.toggle("hidden",!t);
+}
+document.getElementById("rejoinBtn-online").onclick=async()=>{
+ const id=localStorage.getItem("chessLastRoom");if(!id)return;
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ try{
+  onlineRoomRef=doc(db,"chessRooms",id);
+  const s=await getDoc(onlineRoomRef);
+  if(!s.exists()){alert("That room no longer exists.");localStorage.removeItem("chessLastRoom");checkRejoinAvailable();return}
+  const d=s.data();
+  if(d.whiteId===playerId)onlineMyColor="w";
+  else if(d.blackId===playerId)onlineMyColor="b";
+  else{alert("Couldn't rejoin — this room no longer belongs to you.");localStorage.removeItem("chessLastRoom");checkRejoinAvailable();return}
+  listenOnline(id);document.getElementById("rejoinBanner-online").classList.add("hidden");
+ }catch(e){alert("Rejoin failed: "+(e.code||e.message))}
+};
+document.getElementById("rejoinBtn-tourn").onclick=async()=>{
+ const id=localStorage.getItem("chessLastTournId");if(!id)return;
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection.");return}
+ document.getElementById("tid").value=id;openTournament(id);
+ document.getElementById("rejoinBanner-tourn").classList.add("hidden");
+};
+
+/* ---- Player ID / friend invites (play a specific person instead of sharing a room code) ---- */
+document.getElementById("myCodeShow").value=myCode;
+document.getElementById("myNameInput").value=myName;
+document.getElementById("copyMyCode").onclick=async()=>{await navigator.clipboard.writeText(myCode)};
+document.getElementById("myNameInput").onchange=async(e)=>{
+ myName=e.target.value.trim()||myName;localStorage.setItem("chessMyName",myName);
+ if(db)await registerPlayer();
+};
+withLoading(document.getElementById("sendInvite"),"Sending…",async()=>{
+ const target=document.getElementById("friendCode").value.trim().toUpperCase();
+ if(target.length!==6){alert("Enter a 6-character Player ID.");return}
+ await sendInviteToCode(target);
+});
+async function sendInviteToCode(target){
+ if(target===myCode){alert("That's your own Player ID.");return}
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const tSnap=await getDoc(doc(db,"players",target));
+  if(!tSnap.exists()){alert("Player ID not found. Ask them to open the Online tab once so their ID registers.");return}
+  const tData=tSnap.data();
+  const invRef=await addDoc(collection(db,"invites"),{fromId:playerId,fromCode:myCode,fromName:myName,toId:tData.ownerId,toCode:target,toName:tData.name,status:"pending",roomCode:null,createdAt:Date.now()});
+  listenMyInvite(invRef.id);
+  say(onlineUI.statusEl,"Invite sent","Waiting for "+(tData.name||target)+" to accept…");
+ }catch(e){console.error(e);alert("Invite failed: "+(e.code||e.message))}
+}
+function listenMyInvite(id){
+ if(myInviteUnsub)myInviteUnsub();
+ myInviteUnsub=onSnapshot(doc(db,"invites",id),s=>{
+  if(!s.exists())return;
+  const d=s.data();
+  if(d.status==="accepted"&&d.roomCode){
+   myInviteUnsub();onlineMyColor="w";document.getElementById("roomCode").value=d.roomCode;
+   onlineRoomRef=doc(db,"chessRooms",d.roomCode);listenOnline(d.roomCode);
+  }else if(d.status==="declined"){
+   myInviteUnsub();say(onlineUI.statusEl,"Invite declined",(d.toName||d.toCode)+" declined your invite.");
+  }
+ });
+}
+function listenIncomingInvites(){
+ if(incomingUnsub)incomingUnsub();
+ const q=query(collection(db,"invites"),where("toId","==",playerId),where("status","==","pending"));
+ incomingUnsub=onSnapshot(q,snap=>{
+  const banner=document.getElementById("inviteBanner-online");
+  if(snap.empty){banner.classList.add("hidden");banner.innerHTML="";return}
+  banner.classList.remove("hidden");
+  banner.innerHTML=snap.docs.map(d=>{
+   const v=d.data();
+   const label=v.type==="tournament"?`invited you to <b>${v.tournamentName||"a tournament"}</b> — Seed ${v.seed}`:"wants to play a game";
+   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span><b>${v.fromName||v.fromCode}</b> ${label}</span><span style="display:flex;gap:6px"><button data-acc="${d.id}" class="primary" style="padding:8px 10px">Accept</button><button data-dec="${d.id}" style="padding:8px 10px">Decline</button></span></div>`;
+  }).join("");
+  banner.querySelectorAll("[data-acc]").forEach(btn=>{
+   const inv=snap.docs.find(d=>d.id===btn.getAttribute("data-acc")).data();
+   btn.onclick=()=>acceptInvite(btn.getAttribute("data-acc"),inv);
+  });
+  banner.querySelectorAll("[data-dec]").forEach(btn=>{btn.onclick=()=>declineInvite(btn.getAttribute("data-dec"))});
+ },e=>console.error(e));
+}
+async function acceptInvite(id,inv){
+ if(inv.type==="tournament"){await acceptTournamentInvite(id,inv);return}
+ try{
+  const roomId=code();onlineRoomRef=doc(db,"chessRooms",roomId);
+  const init={board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],whiteId:inv.fromId,whiteName:inv.fromName||inv.fromCode,blackId:playerId,blackName:myName,status:"playing",winner:null,turnStartedAt:Date.now(),updatedAt:Date.now()};
+  await setDoc(onlineRoomRef,init);
+  await updateDoc(doc(db,"invites",id),{status:"accepted",roomCode:roomId});
+  onlineMyColor="b";document.getElementById("roomCode").value=roomId;
+  listenOnline(roomId);showScreen("Online");
+ }catch(e){console.error(e);alert("Could not start game: "+(e.code||e.message))}
+}
+async function acceptTournamentInvite(id,inv){
+ try{
+  const tRef=doc(db,"tournaments",inv.tournamentId);
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tRef);if(!snap.exists())throw Error("This tournament no longer exists.");
+   const d=snap.data();
+   if(d.teams[inv.seed-1])throw Error("That seat was already filled.");
+   const teams=[...d.teams];teams[inv.seed-1]=myName;
+   const teamIds=[...(d.teamIds||[null,null,null,null,null,null])];teamIds[inv.seed-1]=playerId;
+   const allFilled=teams.every(n=>n);
+   tx.update(tRef,{teams,teamIds,status:allFilled?"active":"recruiting"});
+  });
+  await updateDoc(doc(db,"invites",id),{status:"accepted"});
+  document.getElementById("tid").value=inv.tournamentId;
+  openTournament(inv.tournamentId);
+  showScreen("Tourn");
+ }catch(e){console.error(e);alert("Could not join tournament: "+(e.code||e.message))}
+}
+async function declineInvite(id){
+ try{await updateDoc(doc(db,"invites",id),{status:"declined"})}catch(e){console.error(e)}
+}
+
+/* ---- Active Players popup (used for both 1v1 invites and tournament-seat invites) ---- */
+let activePlayersUnsub=null;
+function openActivePlayersModal(onPick){
+ document.getElementById("activeModal").classList.remove("hidden");
+ document.getElementById("activeList").innerHTML="Loading…";
+ if(activePlayersUnsub)activePlayersUnsub();
+ const q=query(collection(db,"players"),orderBy("updatedAt","desc"),limit(50));
+ activePlayersUnsub=onSnapshot(q,snap=>{
+  const now=Date.now(),list=document.getElementById("activeList");
+  const rows=snap.docs.filter(d=>{const v=d.data();return d.id!==myCode&&(now-(v.updatedAt||0))<90000});
+  if(!rows.length){list.innerHTML='<div class="muted">No one else is active right now. Ask a friend to open the Online tab so they show up here.</div>';return}
+  list.innerHTML=rows.map(d=>{
+   const v=d.data();
+   return `<div class="player" style="margin-bottom:8px"><span>🟢 <b>${v.name||d.id}</b><div class="muted" style="font-size:11px">${d.id}</div></span><button data-inv="${d.id}" class="primary" style="padding:8px 12px">Invite</button></div>`;
+  }).join("");
+  list.querySelectorAll("[data-inv]").forEach(btn=>{
+   btn.onclick=async()=>{
+    document.getElementById("activeModal").classList.add("hidden");
+    if(activePlayersUnsub){activePlayersUnsub();activePlayersUnsub=null}
+    await onPick(btn.getAttribute("data-inv"));
+   };
+  });
+ },e=>{console.error(e);document.getElementById("activeList").innerHTML='<div class="muted">Could not load active players: '+(e.code||e.message)+'</div>'});
+}
+document.getElementById("showActiveBtn").onclick=async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ openActivePlayersModal(code=>sendInviteToCode(code));
+};
+document.getElementById("closeActiveModal").onclick=()=>{
+ document.getElementById("activeModal").classList.add("hidden");
+ if(activePlayersUnsub){activePlayersUnsub();activePlayersUnsub=null}
+};
+checkRejoinAvailable();
+
+/* ============ TOURNAMENT ============ */
+function initialBracket(){
+ return {
+  qf1:{aSeed:3,bSeed:6,winnerSeed:null,status:"pending",roomCode:null},
+  qf2:{aSeed:4,bSeed:5,winnerSeed:null,status:"pending",roomCode:null},
+  sf1:{aSeed:1,bSeed:null,winnerSeed:null,status:"pending",roomCode:null},
+  sf2:{aSeed:2,bSeed:null,winnerSeed:null,status:"pending",roomCode:null},
+  final:{aSeed:null,bSeed:null,winnerSeed:null,status:"pending",roomCode:null}
+ };
+}
+function tid(){let s="";for(let i=0;i<5;i++)s+="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)];return s}
+let currentTournament=null,currentTournamentId=null,tournUnsub=null;
+
+withLoading(document.getElementById("createTourn"),"Connecting…",async()=>{
+ let names=[1,2,3,4,5,6].map(i=>document.getElementById("t"+i).value.trim());
+ if(names.some(n=>!n)){alert("Enter all 6 player names.");return}
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const id=tid();const ref=doc(db,"tournaments",id);
+  const data={name:"6-Player Tournament",teams:names,teamIds:[null,null,null,null,null,null],bracket:initialBracket(),champion:null,status:"active",organizerId:playerId,createdAt:Date.now()};
+  await setDoc(ref,data);
+  openTournament(id);
+ }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
+});
+withLoading(document.getElementById("buildViaInvites"),"Connecting…",async()=>{
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ try{
+  const id=tid();const ref=doc(db,"tournaments",id);
+  const data={name:myName+"'s Tournament",teams:[myName,"","","","",""],teamIds:[playerId,null,null,null,null,null],bracket:initialBracket(),champion:null,status:"recruiting",organizerId:playerId,createdAt:Date.now()};
+  await setDoc(ref,data);
+  openTournament(id);
+ }catch(e){console.error(e);alert("Create tournament failed: "+(e.code||e.message))}
+});
+withLoading(document.getElementById("loadTourn"),"Connecting…",async()=>{
+ let id=document.getElementById("tid").value.trim().toUpperCase();
+ if(!id){alert("Enter a Tournament ID.");return}
+ if(!await loadFirebase()){alert("Firebase couldn't connect. Check your internet connection or Firebase setup.");return}
+ openTournament(id);
+});
+function openTournament(id){
+ currentTournamentId=id;
+ localStorage.setItem("chessLastTournId",id);checkRejoinAvailable();
+ document.getElementById("tournHome").classList.add("hidden");
+ document.getElementById("tournView").classList.remove("hidden");
+ document.getElementById("tournMatch").classList.add("hidden");
+ document.getElementById("tournIdShow").textContent=id;
+ document.getElementById("recruitIdShow").textContent=id;
+ if(tournUnsub)tournUnsub();
+ const ref=doc(db,"tournaments",id);
+ tournUnsub=onSnapshot(ref,s=>{
+  if(!s.exists()){alert("Tournament not found.");backToHome();return}
+  currentTournament=s.data();
+  document.getElementById("tournName").textContent=currentTournament.name;
+  document.getElementById("recruitBox").classList.toggle("hidden",currentTournament.status!=="recruiting");
+  if(currentTournament.status==="recruiting")renderRecruit();
+  renderBracket();
+ },e=>alert("Firebase error: "+e.message));
+}
+function backToHome(){
+ if(tournUnsub)tournUnsub();
+ document.getElementById("tournHome").classList.remove("hidden");
+ document.getElementById("tournView").classList.add("hidden");
+ document.getElementById("tournMatch").classList.add("hidden");
+}
+document.getElementById("backHome").onclick=backToHome;
+
+async function sendTournamentInviteToCode(target,seed){
+ if(target===myCode){alert("That's your own Player ID.");return}
+ try{
+  const tSnap=await getDoc(doc(db,"players",target));
+  if(!tSnap.exists()){alert("Player ID not found. Ask them to open the Online tab once so their ID registers.");return}
+  const tData=tSnap.data();
+  await addDoc(collection(db,"invites"),{type:"tournament",tournamentId:currentTournamentId,tournamentName:currentTournament?.name||"a tournament",seed,fromId:playerId,fromCode:myCode,fromName:myName,toId:tData.ownerId,toCode:target,toName:tData.name,status:"pending",createdAt:Date.now()});
+  alert("Invite sent to "+(tData.name||target)+" for Seed "+seed+".");
+ }catch(e){console.error(e);alert("Invite failed: "+(e.code||e.message))}
+}
+function renderRecruit(){
+ const t=currentTournament,isOrganizer=t.organizerId===playerId;
+ document.getElementById("recruitSeats").innerHTML=[0,1,2,3,4,5].map(i=>{
+  const seed=i+1,name=t.teams[i];
+  if(name)return `<div class="player"><span>Seed ${seed}</span><b>${name}${(t.teamIds&&t.teamIds[i]===playerId)?" (You)":""}</b></div>`;
+  return `<div class="player"><span>Seed ${seed}</span>${isOrganizer?`<button data-seed="${seed}" class="recruitInviteBtn primary" style="padding:8px 12px">+ Invite</button>`:'<b class="muted">Open seat</b>'}</div>`;
+ }).join("");
+ document.querySelectorAll(".recruitInviteBtn").forEach(btn=>{
+  btn.onclick=()=>{
+   const seed=parseInt(btn.getAttribute("data-seed"));
+   openActivePlayersModal(code=>sendTournamentInviteToCode(code,seed));
+  };
+ });
+}
+
+function teamName(seed){if(!seed)return"TBD";return currentTournament.teams[seed-1]||"TBD"}
+function renderBracket(){
+ const t=currentTournament,b=t.bracket;
+ document.getElementById("champBox").innerHTML=t.champion?`<div class="champ">🏆 Champion: ${teamName(t.champion)}</div>`:"";
+ const order=[["qf1","Quarterfinal 1"],["qf2","Quarterfinal 2"],["sf1","Semifinal 1"],["sf2","Semifinal 2"],["final","Final"]];
+ document.getElementById("bracketBox").innerHTML=order.map(([key,label])=>{
+  const m=b[key];
+  const canPlay=m.aSeed&&m.bSeed&&m.status!=="done"&&teamName(m.aSeed)!=="TBD"&&teamName(m.bSeed)!=="TBD";
+  const aWin=m.winnerSeed===m.aSeed,bWin=m.winnerSeed===m.bSeed;
+  return `<div class="bmatch"><div class="rd">${label}</div>
+   <div class="bp2 ${aWin?"win":""}">${teamName(m.aSeed)}${aWin?" ✓":""}</div>
+   <div class="bp2 ${bWin?"win":""}">${teamName(m.bSeed)}${bWin?" ✓":""}</div>
+   ${canPlay?`<button data-match="${key}" class="playMatchBtn primary" style="margin-top:8px">Play This Match</button>`:(m.status==="done"?"":"<div class=\"muted\" style=\"margin-top:6px\">Waiting for players</div>")}
+  </div>`;
+ }).join("");
+ document.querySelectorAll(".playMatchBtn").forEach(btn=>{
+  btn.onclick=()=>openMatch(btn.getAttribute("data-match"));
+ });
+}
+
+const tournUI=makeBoardUI("board-tourn","status-tourn","moves-tourn",null,null);
+let T={board:null,turn:"w",selected:null,legal:[],flipped:false,hint:null,lastMove:null,onClick:tournClick};
+let tournRoomRef=null,tournRoomUnsub=null,tournRoom=null,tournMyColor=null,tournBusy=false,tournMatchKey=null;
+let tournTurnKey=null,tournAutoMoved=false,tournResultHandled=false;
+
+async function openMatch(matchKey){
+ tournMatchKey=matchKey;
+ const m=currentTournament.bracket[matchKey];
+ document.getElementById("tournView").classList.add("hidden");
+ document.getElementById("tournMatch").classList.remove("hidden");
+ let roomId=m.roomCode;
+ const tref=doc(db,"tournaments",currentTournamentId);
+ if(!roomId){
+  roomId=code();
+  try{
+   await runTransaction(db,async tx=>{
+    const snap=await tx.get(tref);const data=snap.data();
+    if(data.bracket[matchKey].roomCode){roomId=data.bracket[matchKey].roomCode;return}
+    const nb={...data.bracket,[matchKey]:{...data.bracket[matchKey],roomCode:roomId,status:"live"}};
+    tx.update(tref,{bracket:nb});
+   });
+  }catch(e){console.error(e);alert("Could not start match: "+e.message);return}
+  const rref=doc(db,"chessRooms",roomId);
+  const rsnap=await getDoc(rref);
+  if(!rsnap.exists()){
+   await setDoc(rref,{board:flattenBoard(initialBoard()),turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,history:[],
+    whiteId:null,whiteName:teamName(m.aSeed),blackId:null,blackName:teamName(m.bSeed),
+    status:"waiting",winner:null,tournamentId:currentTournamentId,matchKey,whiteSeed:m.aSeed,blackSeed:m.bSeed,turnStartedAt:Date.now(),updatedAt:Date.now()});
+  }
+ }
+ tournRoomRef=doc(db,"chessRooms",roomId);
+ let s=await getDoc(tournRoomRef);let d=s.data();
+ if(d.whiteId===playerId)tournMyColor="w";
+ else if(d.blackId===playerId)tournMyColor="b";
+ else if(!d.whiteId){await updateDoc(tournRoomRef,{whiteId:playerId,updatedAt:Date.now()});tournMyColor="w"}
+ else if(!d.blackId){await updateDoc(tournRoomRef,{blackId:playerId,status:"playing",turnStartedAt:Date.now(),updatedAt:Date.now()});tournMyColor="b"}
+ else{tournMyColor=null} // spectator
+ listenTournMatch();
+}
+function listenTournMatch(){
+ if(tournRoomUnsub)tournRoomUnsub();
+ tournResultHandled=false;
+ tournRoomUnsub=onSnapshot(tournRoomRef,async s=>{
+  if(!s.exists())return;
+  tournRoom=s.data();T.board=unflattenBoard(tournRoom.board);T.turn=tournRoom.turn;T.history=tournRoom.history||[];T.selected=null;T.legal=[];T.lastMove=tournRoom.lastMove||T.lastMove;
+  const turnKey=tournRoom.turn+"-"+(tournRoom.history?tournRoom.history.length:0);
+  if(turnKey!==tournTurnKey){tournTurnKey=turnKey;tournAutoMoved=false}
+  document.querySelector("#tourn-white b").textContent=(tournRoom.whiteName||"Waiting")+(tournMyColor==="w"?" (You)":"");
+  document.querySelector("#tourn-black b").textContent=(tournRoom.blackName||"Waiting")+(tournMyColor==="b"?" (You)":"");
+  if(tournRoom.winner){
+   say(tournUI.statusEl,tournRoom.winner==="draw"?"Draw":(tournRoom.winner==="w"?tournRoom.whiteName:tournRoom.blackName)+" wins","Game over");
+   await recordMatchResult(tournRoom.winner);
+   if(!tournResultHandled&&tournMyColor){
+    tournResultHandled=true;
+    recordGameResult(tournRoom.winner==="draw"?"draw":(tournRoom.winner===tournMyColor?"win":"loss"));
+   }
+  }else if(tournRoom.status==="waiting")say(tournUI.statusEl,"Waiting for opponent","");
+  else say(tournUI.statusEl,tournRoom.turn===tournMyColor?"Your turn":(tournMyColor?"Opponent's turn":"Spectating"),tournRoom.turn==="w"?"White to move":"Black to move");
+  renderBoard(tournUI,T);
+  updateTournTimerDisplay();
+ });
+}
+function updateTournTimerDisplay(){
+ // Time limit disabled — players can take as long as they like.
+ const el=document.getElementById("timer-tourn");if(el)el.textContent="";
+}
+async function autoPlayTourn(){
+ let m=bestMove(T.board,tournMyColor,tournRoom.castling,tournRoom.ep,1);
+ if(!m){let ms=legalMoves(T.board,tournMyColor,tournRoom.castling,tournRoom.ep);if(ms.length)m=ms[Math.floor(Math.random()*ms.length)]}
+ if(m)await sendTournMove(m);
+}
+async function recordMatchResult(winnerColor){
+ if(winnerColor==="draw")return; // draws not auto-advanced; organizer can replay by re-opening match
+ const winnerSeed=winnerColor==="w"?tournRoom.whiteSeed:tournRoom.blackSeed;
+ const tref=doc(db,"tournaments",currentTournamentId);
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tref);const data=snap.data();
+   const bkt=data.bracket;
+   if(bkt[tournMatchKey].status==="done")return; // already recorded
+   bkt[tournMatchKey]={...bkt[tournMatchKey],winnerSeed,status:"done"};
+   let champion=data.champion;
+   if(tournMatchKey==="qf1")bkt.sf2.bSeed=winnerSeed;
+   if(tournMatchKey==="qf2")bkt.sf1.bSeed=winnerSeed;
+   if(tournMatchKey==="sf1")bkt.final.aSeed=winnerSeed;
+   if(tournMatchKey==="sf2")bkt.final.bSeed=winnerSeed;
+   if(tournMatchKey==="final")champion=winnerSeed;
+   tx.update(tref,{bracket:bkt,champion});
+  });
+ }catch(e){console.error(e)}
+}
+function tournClick(r,c){
+ if(!tournRoom||tournRoom.status!=="playing"||tournRoom.turn!==tournMyColor||tournBusy)return;
+ T.hint=null;
+ let p=T.board[r][c],m=T.legal.find(x=>x.tr===r&&x.tc===c);
+ if(T.selected&&m){optimisticTournMove(m);return}
+ if(p&&pcolor(p)===tournMyColor){T.selected=[r,c];T.legal=legalMoves(T.board,tournMyColor,tournRoom.castling,tournRoom.ep).filter(x=>x.fr===r&&x.fc===c);renderBoard(tournUI,T)}
+ else{T.selected=null;T.legal=[];renderBoard(tournUI,T)}
+}
+function optimisticTournMove(m){
+ const ap=applyMove(T.board,m,tournRoom.castling,tournRoom.ep);
+ T.board=ap.nb;T.selected=null;T.legal=[];T.hint=null;T.lastMove=m;
+ renderBoard(tournUI,T);
+ say(tournUI.statusEl,"Opponent's turn","Move sent…");
+ sendTournMove(m);
+}
+async function sendTournMove(m){
+ if(tournBusy)return;tournBusy=true;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(tournRoomRef);if(!snap.exists())throw Error("Room does not exist");
+   const d=snap.data();if(d.turn!==tournMyColor)throw Error("Not your turn");
+   const b=unflattenBoard(d.board),cast={...d.castling},ep=d.ep;
+   const lm=legalMoves(b,tournMyColor,cast,ep).find(x=>JSON.stringify(x)===JSON.stringify(m));if(!lm)throw Error("Illegal move");
+   const note=notation(b,lm,cast,ep),ap=applyMove(b,lm,cast,ep);
+   let hist=[...(d.history||[]),note],next=opp(tournMyColor),ms=legalMoves(ap.nb,next,ap.nc,ap.nep),winner=null,status="playing";
+   if(!ms.length){status="finished";winner=inCheck(ap.nb,next)?tournMyColor:"draw"}
+   tx.update(tournRoomRef,{board:flattenBoard(ap.nb),castling:ap.nc,ep:ap.nep,turn:next,history:hist,status,winner,lastMove:{fr:lm.fr,fc:lm.fc,tr:lm.tr,tc:lm.tc,captured:!!lm.captured},turnStartedAt:Date.now(),updatedAt:Date.now()});
+  });
+ }catch(e){console.error(e);alert(e.message)}finally{tournBusy=false}
+}
+document.getElementById("flip-tourn").onclick=()=>{T.flipped=!T.flipped;renderBoard(tournUI,T)};
+document.getElementById("hint-tourn").onclick=()=>{
+ if(!tournRoom||tournRoom.status!=="playing"||tournRoom.turn!==tournMyColor)return;
+ let m=bestMove(T.board,tournMyColor,tournRoom.castling,tournRoom.ep,2);
+ if(m){T.hint=m;renderBoard(tournUI,T);say(tournUI.statusEl,"Your turn","Hint: "+FILES[m.fc]+(8-m.fr)+" → "+FILES[m.tc]+(8-m.tr))}
+};
+document.getElementById("backBracket").onclick=()=>{
+ if(tournRoomUnsub)tournRoomUnsub();
+ document.getElementById("tournMatch").classList.add("hidden");
+ document.getElementById("tournView").classList.remove("hidden");
+};
+
+/* ============ FULL SCREEN BOARD ============ */
+function setupFullscreen(boardElId,btnId){
+ const btn=document.getElementById(btnId);
+ const target=document.getElementById(boardElId).closest(".grid");
+ if(!btn||!target)return;
+ btn.onclick=()=>{
+  const isFs=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!isFs){
+   const req=target.requestFullscreen||target.webkitRequestFullscreen;
+   if(!req){alert("Full screen isn't supported on this browser/device.");return}
+   req.call(target).catch(e=>alert("Couldn't enter full screen: "+e.message));
+  }else{
+   (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+ };
+ const onChange=()=>{
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  if(fsEl===target){target.classList.add("fs-active");btn.textContent="✕ Exit Full Screen"}
+  else{target.classList.remove("fs-active");btn.textContent="⛶ Full Screen"}
+ };
+ document.addEventListener("fullscreenchange",onChange);
+ document.addEventListener("webkitfullscreenchange",onChange);
+}
+setupFullscreen("board-local","fullscreen-local");
+setupFullscreen("board-online","fullscreen-online");
+setupFullscreen("board-tourn","fullscreen-tourn");
+
+/* ============ NAV ============ */
+function showScreen(name){
+ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById("scr"+name).classList.add("active");
+ document.getElementById("nav"+name).classList.add("active");
+}
+document.getElementById("navLocal").onclick=()=>showScreen("Local");
+document.getElementById("navOnline").onclick=()=>showScreen("Online");
+document.getElementById("navTourn").onclick=()=>showScreen("Tourn");
+
+/* ============ INIT ============ */
+document.getElementById("hubChess").onclick=()=>{
+ document.getElementById("hub").classList.add("hidden");
+ document.getElementById("ludoApp").classList.add("hidden");
+ document.getElementById("chessApp").classList.remove("hidden");
+};
+document.getElementById("hubLudo").onclick=()=>{
+ document.getElementById("hub").classList.add("hidden");
+ document.getElementById("chessApp").classList.add("hidden");
+ const ludoApp=document.getElementById("ludoApp");
+ ludoApp.classList.remove("hidden");
+ const frame=document.getElementById("ludoFrame");
+ if(!frame.dataset.loaded){
+  const raw=document.getElementById("ludoSource").textContent.replace(/@@LUDO_SCRIPT_CLOSE@@/g,"<"+"/script>");
+  frame.srcdoc=raw;
+  frame.dataset.loaded="1";
+ }
+};
+window.addEventListener("message",e=>{
+ if(e.data==="ludoGoHome"){
+  document.getElementById("ludoApp").classList.add("hidden");
+  document.getElementById("chessApp").classList.add("hidden");
+  document.getElementById("hub").classList.remove("hidden");
+ }
+});
+document.getElementById("hubBackBtn").onclick=()=>{
+ document.getElementById("chessApp").classList.add("hidden");
+ document.getElementById("ludoApp").classList.add("hidden");
+ document.getElementById("hub").classList.remove("hidden");
+};
+newLocalGame();
+document.getElementById("net").textContent="Firebase: not connected yet";
+loadFirebase(); // background load; Quick Play never waits on this
+</script>
+</body>
+</html>
